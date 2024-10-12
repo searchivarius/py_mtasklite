@@ -69,6 +69,12 @@ class WorkerPoolResultGenerator:
     def __iter__(self):
         return self
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.parent_obj.__exit__(exc_type, exc_val, exc_tb)
+
     def __next__(self):
         return next(self._iterator)
 
