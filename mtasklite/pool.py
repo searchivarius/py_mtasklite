@@ -15,7 +15,7 @@ class WorkerWrapper:
         self.worker = worker
         self.timeout = timeout
 
-    def __call__(self, in_queue, out_queue, argument_passing: ArgumentPassing):
+    def __call__(self, in_queue, out_queue, argument_type: ArgumentPassing):
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while True:
@@ -28,17 +28,17 @@ class WorkerWrapper:
                 # If a worker is an object with a delayed initialization (inside a shell object),
                 # then it will be created the first time it is used here.
                 try:
-                    if argument_passing == ArgumentPassing.AS_KWARGS:
+                    if argument_type == ArgumentPassing.AS_KWARGS:
                         future = executor.submit(self.worker, **worker_arg)
                         ret_val = future.result(timeout=self.timeout)
-                    elif argument_passing == ArgumentPassing.AS_ARGS:
+                    elif argument_type == ArgumentPassing.AS_ARGS:
                         future = executor.submit(self.worker, *worker_arg)
                         ret_val = future.result(timeout=self.timeout)
-                    elif argument_passing == ArgumentPassing.AS_SINGLE_ARG:
+                    elif argument_type == ArgumentPassing.AS_SINGLE_ARG:
                         future = executor.submit(self.worker, worker_arg)
                         ret_val = future.result(timeout=self.timeout)
                     else:
-                        raise Exception(f'Invalid argument passing type: {argument_passing}')
+                        raise Exception(f'Invalid argument passing type: {argument_type}')
                 except Exception as e:
                     ret_val = e
 
@@ -151,29 +151,30 @@ class Pool:
                                          chunk_size=chunk_size,
                                          chunk_prefill_ratio=chunk_prefill_ratio)
 
-    def __init__(self, function_or_worker_arr: Union[Type, List[ShellObject]],
+    def __init__(self, worker_or_worker_arr: Union[Type, List[ShellObject]],
                  n_jobs: int = None,
-                 argument_passing: ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
-                 bounded: bool = True,
+                 argument_type: ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
                  exception_behavior: ExceptionBehaviour = ExceptionBehaviour.IMMEDIATE,
+                 bounded: bool = True,
                  chunk_size: int = 100, chunk_prefill_ratio: int = 2,
                  is_unordered: bool = False,
                  use_threads: bool = False,
                  task_timeout: float = None,
                  join_timeout: float = None):
 
-        if type(function_or_worker_arr) == list:
-            assert n_jobs is None or n_jobs == len(function_or_worker_arr), \
+        if type(worker_or_worker_arr) == list:
+            assert n_jobs is None or n_jobs == len(worker_or_worker_arr), \
                 'The number of workers does not match the worker array length (you can just set it None)!'
-            self.num_workers = len(function_or_worker_arr)
-            for worker in function_or_worker_arr:
-                assert type(worker) == ShellObject, \
-                                        f'Each object must be an instance of a class with a delayed initialization!'
+            self.num_workers = len(worker_or_worker_arr)
+            for worker in worker_or_worker_arr:
+                assert inspect.isfunction(worker) or type(worker) == ShellObject, \
+                    f'A worker must be a function or an instance of a class with a delayed initialization, ' + \
+                    ' not {type(worker)}!'
         else:
             assert n_jobs is not None, 'Specify the number of jobs or an array of worker objects!'
-            assert inspect.isfunction(function_or_worker_arr) or type(function_or_worker_arr) == ShellObject, \
-                    f'A single worker must be a function or an instance of a class with a delayed initialization!,' + \
-                    ' but not {type(function_or_worker_arr)}!'
+            assert inspect.isfunction(worker_or_worker_arr) or type(worker_or_worker_arr) == ShellObject, \
+                    f'A worker must be a function or an instance of a class with a delayed initialization,' + \
+                    ' not {type(function_or_worker_arr)}!'
             self.num_workers = max(int(n_jobs), 1)
 
         self.bounded = bounded
@@ -182,13 +183,14 @@ class Pool:
         self.bounded_exec_chunk_size = int(chunk_size)
 
         self.exception_behavior = exception_behavior
-        self.argument_passing = argument_passing
+        self.argument_type = argument_type
         self.is_unordered = is_unordered
 
         self.in_queue = mp.Queue()
         self.out_queue = mp.Queue()
 
         self.term_signal_sent = False
+        self.exited = False
 
         self.use_threads = use_threads
 
@@ -207,10 +209,10 @@ class Pool:
 
         # Start worker processes
         for proc_id in range(self.num_workers):
-            one_worker = function_or_worker_arr[proc_id] \
-                if type(function_or_worker_arr) == list else function_or_worker_arr
+            one_worker = worker_or_worker_arr[proc_id] \
+                if type(worker_or_worker_arr) == list else worker_or_worker_arr
             one_proc = process_class(target=WorkerWrapper(one_worker, self.task_timeout),
-                                     args=(self.in_queue, self.out_queue, self.argument_passing),
+                                     args=(self.in_queue, self.out_queue, self.argument_type),
                                      daemon=daemon)
             self.workers.append(one_proc)
             one_proc.start()
@@ -224,6 +226,7 @@ class Pool:
         if not self.use_threads:
             for p in self.workers:
                 p.terminate()
+        self.exited = True
 
     def join_workers(self):
         for p in self.workers:

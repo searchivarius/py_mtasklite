@@ -64,13 +64,13 @@ def main(args):
             [SimpleArithmeticClassWorker(proc_id, fire_exception_proc_id=args.fire_exception_proc_id) for proc_id in range(n_jobs)]
 
     with Pool(function_or_worker_arr, n_jobs,
-             chunk_size=args.chunk_size, chunk_prefill_ratio=args.chunk_prefill_ratio,
-             use_threads=args.use_threads,
-             argument_passing=args.iterable_arg_passing,
-             is_unordered=args.is_unordered,
-             bounded=not args.is_unbounded,
-             exception_behavior=args.exception_behavior,
-             join_timeout=1) as proc_pool:
+              chunk_size=args.chunk_size, chunk_prefill_ratio=args.chunk_prefill_ratio,
+              use_threads=args.use_threads,
+              argument_type=args.iterable_arg_passing,
+              is_unordered=args.is_unordered,
+              bounded=not args.is_unbounded,
+              exception_behavior=args.exception_behavior,
+              join_timeout=1) as proc_pool:
         # just marking the type
         for result in tqdm(proc_pool(iterable)):
             if is_exception(result):
