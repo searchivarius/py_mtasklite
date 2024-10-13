@@ -22,7 +22,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     py_modules=[PACKAGE_NAME],
-    install_requires=[],
+    install_requires=[l for l in open('requirements.txt') if not l.startswith('#') and not l.startswith('git+') and l.strip() != ''],
     license='Apache 2.0',
     python_requires='>=3.6',
     packages=find_packages()

@@ -2,12 +2,14 @@ import concurrent.futures
 import multiprocessing as mp
 import inspect
 
-from typing import List, Type, Union
-
 from .constants import ExceptionBehaviour, ArgumentPassing
 from .delayed_init import ShellObject
 
 from .utils import is_sized_iterator, is_exception
+
+
+def is_valid_worker(worker):
+    return inspect.isfunction(worker) or type(worker) == ShellObject,
 
 
 class WorkerWrapper:
@@ -157,7 +159,7 @@ class Pool:
                                          chunk_size=chunk_size,
                                          chunk_prefill_ratio=chunk_prefill_ratio)
 
-    def __init__(self, worker_or_worker_arr: Union[Type, List[ShellObject]],
+    def __init__(self, worker_or_worker_arr,
                  n_jobs: int = None,
                  argument_type: ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
                  exception_behavior: ExceptionBehaviour = ExceptionBehaviour.IMMEDIATE,
@@ -173,14 +175,14 @@ class Pool:
                 'The number of workers does not match the worker array length (you can just set it None)!'
             self.num_workers = len(worker_or_worker_arr)
             for worker in worker_or_worker_arr:
-                assert inspect.isfunction(worker) or type(worker) == ShellObject, \
+                assert is_valid_worker(worker), \
                     f'A worker must be a function or an instance of a class with a delayed initialization, ' + \
                     ' not {type(worker)}!'
         else:
             assert n_jobs is not None, 'Specify the number of jobs or an array of worker objects!'
-            assert inspect.isfunction(worker_or_worker_arr) or type(worker_or_worker_arr) == ShellObject, \
-                    f'A worker must be a function or an instance of a class with a delayed initialization,' + \
-                    ' not {type(function_or_worker_arr)}!'
+            assert is_valid_worker(worker_or_worker_arr), \
+                f'A worker must be a function or an instance of a class with a delayed initialization,' + \
+                ' not {type(function_or_worker_arr)}!'
             self.num_workers = max(int(n_jobs), 1)
 
         self.bounded = bounded

@@ -30,7 +30,7 @@ def _pqdm(
     input_iterable,
     worker_or_worker_arr,
     n_jobs: int = None,
-    argument_type:ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
+    argument_type: ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
     bounded: bool = True,
     exception_behaviour: ExceptionBehaviour = ExceptionBehaviour.IGNORE,
     use_threads: bool = False,

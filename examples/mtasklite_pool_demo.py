@@ -7,7 +7,15 @@ from tqdm.auto import tqdm
 from mtasklite import Pool, delayed_init, is_exception, set_process_start_method, ExceptionBehaviour, ArgumentPassing
 
 
-def simple_arithmetic_func_worker(input_arg):
+def sample_expensive_calc_func(input_arg):
+    """
+        This is a useless yet expensive function that computes useless values,
+        but takes relatively long time. We use an expensive function to
+        simulate some real-world computation.
+
+    :param input_arg:
+    :return:
+    """
     ret_val = input_arg
     for t in range(100_000):
         ret_val = (ret_val * ret_val) % 337
@@ -15,7 +23,7 @@ def simple_arithmetic_func_worker(input_arg):
 
 
 @delayed_init
-class SimpleArithmeticClassWorker:
+class SampleExpensiveCalcClassWorker:
     def __init__(self, proc_id, fire_exception_proc_id=None):
         print(f'Initialized process {mp.current_process()} passed ID = {proc_id} with fire_exception_proc_id: {fire_exception_proc_id}\n')
         self.proc_id = proc_id
@@ -24,7 +32,7 @@ class SimpleArithmeticClassWorker:
     def __call__(self, input_arg):
         if self.proc_id == self.fire_exception_proc_id:
             raise Exception("Rogue exception!")
-        return simple_arithmetic_func_worker(input_arg)
+        return sample_expensive_calc_func(input_arg)
 
 
 def main(args):
@@ -43,9 +51,9 @@ def main(args):
             yield e
 
     if args.use_unsized_iterable:
-        iterable = input_arr_generator()
+        input_iterable = input_arr_generator()
     else:
-        iterable = input_arr
+        input_iterable = input_arr
 
     tot_res = 0
 
@@ -58,10 +66,11 @@ def main(args):
     print('UN-ordered?:', args.is_unordered)
 
     if args.use_stateless_function_worker:
-        function_or_worker_arr = simple_arithmetic_func_worker
+        function_or_worker_arr = sample_expensive_calc_func
     else:
         function_or_worker_arr = \
-            [SimpleArithmeticClassWorker(proc_id, fire_exception_proc_id=args.fire_exception_proc_id) for proc_id in range(n_jobs)]
+            [SampleExpensiveCalcClassWorker(proc_id, fire_exception_proc_id=args.fire_exception_proc_id)
+             for proc_id in range(n_jobs)]
 
     with Pool(function_or_worker_arr, n_jobs,
               chunk_size=args.chunk_size, chunk_prefill_ratio=args.chunk_prefill_ratio,
@@ -72,7 +81,7 @@ def main(args):
               exception_behavior=args.exception_behavior,
               join_timeout=1) as proc_pool:
         # just marking the type
-        for result in tqdm(proc_pool(iterable)):
+        for result in tqdm(proc_pool(input_iterable)):
             if is_exception(result):
                 print('Error:', result)
             else:
