@@ -27,7 +27,6 @@ def current_function_name():
     return inspect.stack()[1].function  # [1] refers to the caller's frame
 
 
-
 def divide_kwargs(kwargs: KwArgs, first_type) -> Tuple[KwArgs, KwArgs]:
     """
         A slightly modified version of kwarg "divider" from https://github.com/niedakh/pqdm/blob/master/pqdm/utils.py#L24
