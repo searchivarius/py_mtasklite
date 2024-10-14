@@ -37,12 +37,12 @@ class SampleExpensiveCalcClassWorker:
 
 def main(args):
     if args.iterable_arg_passing == ArgumentPassing.AS_SINGLE_ARG:
-        input_arr = [k * 10 for k in range(args.num_lines)]
+        input_arr = [k * 10 for k in range(args.n_elem)]
     elif args.iterable_arg_passing == ArgumentPassing.AS_ARGS:
-        input_arr = [[k * 10] for k in range(args.num_lines)]
+        input_arr = [[k * 10] for k in range(args.n_elem)]
     else:
         assert args.iterable_arg_passing == ArgumentPassing.AS_KWARGS
-        input_arr = [dict(input_arg=k * 10) for k in range(args.num_lines)]
+        input_arr = [dict(input_arg=k * 10) for k in range(args.n_elem)]
 
     def input_arr_generator():
         for e in input_arr:
@@ -91,7 +91,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--num_lines', type=int, default=2000)
+    parser.add_argument('--n_elem', type=int, default=2000,
+                        help='Number of elements in the array')
     parser.add_argument('--chunk_size', type=int, default=100)
     parser.add_argument('--chunk_prefill_ratio', type=int, default=2)
     parser.add_argument('--n_jobs', type=int, default=mp.cpu_count())
