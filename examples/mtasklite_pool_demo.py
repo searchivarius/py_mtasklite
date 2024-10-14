@@ -4,7 +4,7 @@ import multiprocess as mp
 
 from tqdm.auto import tqdm
 
-from mtasklite import Pool, delayed_init, is_exception, set_process_start_method, ExceptionBehaviour, ArgumentPassing
+from mtasklite import Pool, delayed_init, is_exception, ExceptionBehaviour, ArgumentPassing
 
 
 def sample_expensive_calc_func(input_arg):
@@ -36,8 +36,6 @@ class SampleExpensiveCalcClassWorker:
 
 
 def main(args):
-    #set_process_start_method()
-
     if args.iterable_arg_passing == ArgumentPassing.AS_SINGLE_ARG:
         input_arr = [k * 10 for k in range(args.num_lines)]
     elif args.iterable_arg_passing == ArgumentPassing.AS_ARGS:
