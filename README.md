@@ -1,6 +1,6 @@
 # A library for Python lightweight multitasking
 
-A missing piece of the Python multitask (both threads and processes) API: An extension that supports stateful worker pools &amp; size-aware iterators.
+This library is inspired by simplicity of [PQDM](https://github.com/niedakh/pqdm), but it expands PQDM functionality by supporting object-based (stateful) workers and both sized and un-sized iterables. Although it does not reproduce PQDM behavior in every little detail, it provides PQDM-compatibility wrappers, which can be used as a (nearly) drop-in replacement of PQDM. Stateful workers are implemented using a cool concept of the delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
 # terminology reminder
 
