@@ -23,16 +23,23 @@ Although we have a pqmd compatibility mode, for various reasons, we have decided
 
 6. Clarify on the default behavior of the exceptions, which is IGNORE
 
+Additional features:
 
+1. Support for explicit initialization of **stateful** workers. This can be useful for quite a few things such as:
+   
+    i. Using different GPUs, models, or network connections in different workers.
 
-3. Additional features:
+    ii. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time) it will be done only once before processing input items.
 
-   i. Support for explicit initialization of **stateful** workers
+    iii. Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, object's state can be used to save important information.
 
-   ii. Lazy memory-efficient iteration: supporting both size-providing iterables (e.g., over an array) and "unsized" ones.
+2. Lazy memory-efficient iteration: supporting both size-providing iterables (e.g., over an array) and "unsized" ones (pqdm only accepts arrays as input).
 
-   iii. Task timeouts 
+3. Unordered execution: If you do not need return values to be ordered the order will not be enforced if the argument `is_unordered` is set `False`.
 
-   iv. Support for context management to make sure child processes won't be left running!
+4. Task timeouts.
 
+5. Can be used separately from tqdm, or tqdm can be called explicitly to improve code clarity.
+
+6. Support for context management to make sure child processes won't be left running!
 

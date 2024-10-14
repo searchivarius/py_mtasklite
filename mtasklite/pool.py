@@ -1,6 +1,7 @@
 import concurrent.futures
 import multiprocessing as mp
 import inspect
+import pdb
 
 from .constants import ExceptionBehaviour, ArgumentPassing
 from .delayed_init import ShellObject
@@ -56,6 +57,9 @@ class WorkerPoolResultGenerator:
         self.is_unordered = is_unordered
         self.chunk_size = chunk_size
         self.chunk_prefill_ratio = chunk_prefill_ratio
+
+        assert self.chunk_size >= 1
+        assert self.chunk_prefill_ratio >= 1
 
         # If the length is None, then TQDM will not know the total length and will not display the progress bar:
         # See __len__ function https://github.com/tqdm/tqdm/blob/master/tqdm/std.py
@@ -154,6 +158,8 @@ class Pool:
                 chunk_prefill_ratio = 1
             else:
                 raise Exception('Unbounded execution requires length-providing iterables!')
+        chunk_size = max(chunk_size, 1)  # don't let this to be < 1
+        chunk_prefill_ratio = max(chunk_prefill_ratio, 1)  # don't let this to be < 1
         return WorkerPoolResultGenerator(parent_obj=self, input_iterable=input_iterable,
                                          is_unordered=self.is_unordered,
                                          chunk_size=chunk_size,
