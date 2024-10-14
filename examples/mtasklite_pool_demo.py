@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import multiprocessing as mp
+import multiprocess as mp
 
 from tqdm.auto import tqdm
 
@@ -36,7 +36,7 @@ class SampleExpensiveCalcClassWorker:
 
 
 def main(args):
-    set_process_start_method()
+    #set_process_start_method()
 
     if args.iterable_arg_passing == ArgumentPassing.AS_SINGLE_ARG:
         input_arr = [k * 10 for k in range(args.num_lines)]
