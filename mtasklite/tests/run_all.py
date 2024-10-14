@@ -2,7 +2,6 @@
 import argparse
 import sys
 
-from mtasklite import set_process_start_method
 from .test_stateless import test_stateless_1
 from .test_stateful import test_stateful_1
 from .test_misc import test_misc_1
@@ -25,8 +24,6 @@ def main(args):
 
 
 if __name__ == '__main__':
-    set_process_start_method()
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_elem', type=int, default=2000)
 
