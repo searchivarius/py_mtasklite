@@ -1,7 +1,14 @@
-from mtasklite.constants import ArgumentPassing
+from mtasklite.constants import ArgumentPassing, ExceptionBehaviour
 from mtasklite.processes import pqdm
-from mtasklite.utils import current_function_name
+from mtasklite.utils import current_function_name, is_exception
 from mtasklite import Pool
+from mtasklite import delayed_init
+from tqdm import tqdm
+
+@delayed_init
+class AlwaysThrows:
+    def __call__(self):
+        raise Exception()
 
 
 def ret_args(a, b, c):
@@ -10,6 +17,46 @@ def ret_args(a, b, c):
 
 def ret_single_arg(a):
     return a
+
+
+thrown_e = None
+
+def test_exceptions(exception_behavior: ExceptionBehaviour):
+    N = 16
+    N_JOBS = 4
+
+    input_arr = [()] * N
+
+    global thrown_e
+
+    for use_threads in tqdm([False, True],
+                        desc=f'Testing {current_function_name()} with {exception_behavior}'):
+        with Pool([AlwaysThrows()] * N_JOBS,
+                  argument_type='args', # also testing conversion from string to an ArgumentPassing type
+                  use_threads=use_threads,
+                  exception_behavior=exception_behavior) as pbar:
+            try:
+                thrown_e = None
+                result = pbar(input_arr)
+                assert len(result) == N
+                for e in result:
+                    assert is_exception(e)
+
+            except Exception as e:
+                thrown_e = e
+            if ExceptionBehaviour == ExceptionBehaviour.IMMEDIATE:
+                assert thrown_e is not None
+                assert type(thrown_e) == Exception
+                assert is_exception(thrown_e.args[0])
+            if ExceptionBehaviour == ExceptionBehaviour.DEFERRED:
+                assert thrown_e is not None
+                assert type(thrown_e) == Exception
+                except_arg1 = thrown_e.args[0]
+                assert type(except_arg1) == list
+
+                assert len(except_arg1) == N
+                for e in except_arg1:
+                    assert is_exception(e)
 
 
 def test_single_arg():
@@ -83,6 +130,13 @@ def test_misc_1():
         print('Unexpected exception in test_args:', e)
         return False
 
+    try:
+        test_exceptions(ExceptionBehaviour.DEFERRED)
+        test_exceptions(ExceptionBehaviour.IMMEDIATE)
+        test_exceptions(ExceptionBehaviour.IGNORE)
+    except Exception as e:
+        print('Unexpected exception in test_exceptions:', e)
+        return False
 
     return True
 

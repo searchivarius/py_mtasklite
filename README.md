@@ -1,45 +1,96 @@
-# A library for Python lightweight multitasking
+# MultiTASKLite: A lightweight library for Python lightweight multitasking
 
-This library is inspired by simplicity of [PQDM](https://github.com/niedakh/pqdm), but it expands PQDM functionality by supporting object-based (stateful) workers and both sized and un-sized iterables. Although it does not reproduce PQDM behavior in every little detail, it provides PQDM-compatibility wrappers, which can be used as a (nearly) drop-in replacement of PQDM. Stateful workers are implemented using a cool concept of the delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+This `mtasklite` is inspired by simplicity of [PQDM](https://github.com/niedakh/pqdm), but it improves upon PQDM several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a more [detailed list of features](#features)), and task timeouts. Stateful workers are implemented using a cool concept of the delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
-# terminology reminder
+This enables:
+  1. Using different GPUs, models, or network connections in different workers.
+  2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time) it will be done only once before processing input items.
+  3. Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, object's state can be used to save important information.
 
-sized vs un-sized iterators
+The `mtasklite` package provides **pqdm-compatibility** wrappers, which can be used as a (nearly) drop-in replacement of `pqdm`. For an overview of differences, please, refer to the [pqdm-compatability notes](docs/pqdm_compatibility.md)
 
-# pqdm (in) compatibility
+# Install & Use
 
-Although we have a pqmd compatibility mode, for various reasons, we have decided to not make our code
-100% compatible. There are a couple of crucial differences:
+To install:
 
-1. We return an iterable, not a list.
+```pip install mtasklite```
 
-2. Because semantics of the worker parameter is extended (it can be a list including both functions and statefull class objects) we changed the parameter name `function` to `worker_or_worker_arr`. Likewise, because we support generic iterables rather than lists, the parameter name `array` was changed into `input_iterable`. However, the order of these arguments remains the same, so renaming should matter little in practice.
+## Use via pqdm-compatibility wrappers
+  
+`mtasklite` provides convenience wrappers that (with a few exceptions) mimic `pqdm` behavior and parameters, in particular, in terms passing arguments to (function) workers and handling exceptions:
 
-3. The 'direct' argument passing mode name is confusing and we called it a single-argument mode instead (and define a new constant). Fortunately, this is a default argument passing value, so we anticipate that no code change will be required.
+```
+from mtasklite.processes import pqdm
 
-4. Regarding the bounded execution flag, we set it to false by default. Moreover, we cannot support it for un-sized iterators. However, if the iterator is for the object with a known size, we simulate unbounded execution by setting the chunk size to be equal to the length of the input (and setting prefill ratio to 1).
+def square(a):
+    return a*a
 
-5. We always start a thread/process for a worker even if n_jobs == 1.
+input_arr = [1, 2, 3, 4, 5]
 
-6. Clarify on the default behavior of the exceptions, which is IGNORE
+n_jobs = 4 
+result = pqdm(input_arr, square, n_jobs)
 
-Additional features:
+list(result)
+```
 
-1. Support for explicit initialization of **stateful** workers. This can be useful for quite a few things such as:
-   
-    i. Using different GPUs, models, or network connections in different workers.
+However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` supports a truly lazy processing of results where both the input and output queues are bounded by default. To make this possible, `mtasklite` returns an **iterable**. For the sake of simplicity, in this example we explicitly converted this iterable to an array.
+      
+By default `mtasklite` (and `pqdm`) uses `tqdm` to display the progress. For arrays and other  size-aware iterables, one will see an actual progress bar going from 0% to 100. For un-sized iterables, one will see a dynamically updated number of processed items. 
 
-    ii. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time) it will be done only once before processing input items.
+Also note that by default both `mtasklite` and PQDM ignore exceptions: When a task terminates due to an exception this exception is returned **instead of** a return value. You can check if exception happened using a convenience wrapper:
+```
+from mtasklite import is_exception
 
-    iii. Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, object's state can be used to save important information.
+if is_exception(ret_val):
+   do_something()
+```
 
-2. Lazy memory-efficient iteration: supporting both size-providing iterables (e.g., over an array) and "unsized" ones (pqdm only accepts arrays as input).
+For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
 
-3. Unordered execution: If you do not need return values to be ordered the order will not be enforced if the argument `is_unordered` is set `False`.
+To make the library initialize object-based (with a given set of parameters) workers, one needs to:
 
-4. Task timeouts.
+1. Implement a class with a ``__call_`` function an an optional constructor.
+2. Decorate the class definition used `@delayed_init`. 
 
-5. Can be used separately from tqdm, or tqdm can be called explicitly to improve code clarity.
+This decorator "wraps" the actual object inside a shell object, which only memorizes object's initialization parameters. An actual instantiation is delayed till a worker process (or thread) starts. Here is an example of this approach:
 
-6. Support for context management to make sure child processes won't be left running!
+```
+from mtasklite import delayed_init
+from mtasklite.processes import pqdm
+
+@delayed_init
+class Square:
+    def __init__(self, proc_id):
+        # It is important to import multiprocessing here (when using from the notebook)
+        import multiprocessing as mp
+        print(f'Initialized process ' + str(mp.current_process()) + ' with argument = {proc_id}\n')
+    def __call__(self, a):
+        return a*a
+
+input_arr = [1, 2, 3, 4, 5]
+
+# Four workers with different arguments
+result = pqdm(input_arr, [Square(0), Square(1), Square(2), Square(3)])
+
+list(result)
+```
+
+For a more detailed discussion, including the usage with a `with-statement` (which can help prevent resource leakage), please, the the [following page](docs/usage.md).
+
+# Features
+
+`mtasklite` extends the functionality of `pqdm` and has the following features:
+
+* A painless `map-style` parallelization with both stateless and object-based (stateful) workers. Unlike `pqdm`, `mtasklite` permits initialization of each worker using worker-specific parameter via a cool delayed initialization trick. 
+* Support for unordered execution and task timeouts.
+* Support for any iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments) .
+* Supports for truly lazy processing of results where both the input and outpu Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, object's state can be used to save important information.     t queues are bounded by default (setting `bounded` to True enables unbounded input queues).
+* Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that choose an appropriate `tqdm` representation depending on the environment (most notably in Jupyter notebooks). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity).
+* Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class. 
+* If you use `pqdm` in some contexts on MacOS, e.g., noteably in Jupyter notebooks, you have to set the process start type to `fork`, or you will have pickling errors:
+`multiprocessing.set_start_method('fork')`.
+
+# Credits
+
+A **huge** shoutout to the creators for the [multiprocess library](https://github.com/uqfoundation/multiprocess), which is a drop-in replacement of the standard Python `multiprocessing` library, which has various pickling issues that arise on non-Unix platforms. Thanks to their effort, `mtasklite` works on Linux, Windows, and MacOS.
 
