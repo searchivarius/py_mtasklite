@@ -1,13 +1,13 @@
 # MultiTASKLite: A lightweight library for Python lightweight multitasking
 
-This `mtasklite` is inspired by simplicity of [PQDM](https://github.com/niedakh/pqdm), but it improves upon PQDM several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a more [detailed list of features](#features)), and task timeouts. Stateful workers are implemented using a cool concept of the delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+This `mtasklite` is inspired by simplicity of [PQDM](https://github.com/niedakh/pqdm), but it improves upon PQDM several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a more [detailed list of features](#features)), and timeouts, and context managers (works with `with-statement`). Stateful workers are implemented using a cool concept of the delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
 This enables:
   1. Using different GPUs, models, or network connections in different workers.
-  2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time) it will be done only once before processing input items.
-  3. Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, object's state can be used to save important information.
+  2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time) it will be done only once (per process/thread)  **before** processing input items.
+  3. Logging and book-keeping: Each worker is represented by an object that "lives" as long as we have items to process (data can be stored in the object attributes). 
 
-The `mtasklite` package provides **pqdm-compatibility** wrappers, which can be used as a (nearly) drop-in replacement of `pqdm`. For an overview of differences, please, refer to the [pqdm-compatability notes](docs/pqdm_compatibility.md)
+The `mtasklite` package provides **pqdm-compatibility** wrappers, which can be used as a (nearly) drop-in replacement of `pqdm`. For an overview of differences, please, refer to the [pqdm-compatability notes](docs/pqdm_compatibility.md). Despite this, we would encourage using the class [mtasklite.Pool](mtasklite/pool.py) directly and with the `with-statement`.
 
 # Install & Use
 
@@ -49,7 +49,7 @@ For a description of other exception-processing modes, please, see [this page](d
 
 To make the library initialize object-based (with a given set of parameters) workers, one needs to:
 
-1. Implement a class with a ``__call_`` function an an optional constructor.
+1. Implement a class with a ``__call__`` function an an optional constructor.
 2. Decorate the class definition used `@delayed_init`. 
 
 This decorator "wraps" the actual object inside a shell object, which only memorizes object's initialization parameters. An actual instantiation is delayed till a worker process (or thread) starts. Here is an example of this approach:
