@@ -94,27 +94,50 @@ def test_args(iterable_arg_passing: ArgumentPassing):
 
 
 def test_exited_1():
-    input = [1, 2, 3, 4]
+    input_arr = [1, 2, 3, 4]
 
-    for use_threads in [False, True]:
+    for use_threads in tqdm([False, True], desc=f'Testing {current_function_name()}'):
         with Pool(ret_single_arg, 4, use_threads=use_threads) as pbar:
-            result = pbar(input)
+            result = pbar(input_arr)
             assert not result.parent_obj.exited, \
                 f'Unexpected exit status before leaving with: {result.parent_obj.exited}'
         assert result.parent_obj.exited, \
             f'Unexpected exit status after leaving with: {result.parent_obj.exited}'
 
         pbar = Pool([ret_single_arg] * 4, use_threads=use_threads)
-        result = pbar(input)
+        result = pbar(input_arr)
+        list(result) # forces reading and terminating the threads
         assert not result.parent_obj.exited, \
             f'Unexpected exit status when context manager is not used: {result.parent_obj.exited}'
 
+
+def test_exited_2():
+    input_arr = [1, 2, 3, 4]
+
+    # Test termination even though the input is not read
+    for use_threads in tqdm([False, True], desc=f'Testing {current_function_name()}'):
+        with Pool(ret_single_arg, 4, use_threads=use_threads) as pbar:
+            pass
 
 def test_misc_1():
     try:
         test_exited_1()
     except Exception as e:
         print('Unexpected exception in test_exited_1:', e)
+        return False
+
+    try:
+        test_exited_2()
+    except Exception as e:
+        print('Unexpected exception in test_exited_1:', e)
+        return False
+
+    try:
+        test_exceptions(ExceptionBehaviour.DEFERRED)
+        test_exceptions(ExceptionBehaviour.IMMEDIATE)
+        test_exceptions(ExceptionBehaviour.IGNORE)
+    except Exception as e:
+        print('Unexpected exception in test_exceptions:', e)
         return False
 
     try:
@@ -130,14 +153,4 @@ def test_misc_1():
         print('Unexpected exception in test_args:', e)
         return False
 
-    try:
-        test_exceptions(ExceptionBehaviour.DEFERRED)
-        test_exceptions(ExceptionBehaviour.IMMEDIATE)
-        test_exceptions(ExceptionBehaviour.IGNORE)
-    except Exception as e:
-        print('Unexpected exception in test_exceptions:', e)
-        return False
-
     return True
-
-

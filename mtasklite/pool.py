@@ -116,8 +116,7 @@ class WorkerPoolResultGenerator:
                 obj_id, result = self.parent_obj.out_queue.get()
                 if is_exception(result):
                     if self.parent_obj.exception_behavior == ExceptionBehaviour.IMMEDIATE:
-                        self.parent_obj.close()
-                        self.parent_obj.join_workers()
+                        self.parent_obj._close()
                         raise result
                     elif self.parent_obj.exception_behavior == ExceptionBehaviour.DEFERRED:
                         exceptions_arr.append(result)
@@ -138,8 +137,7 @@ class WorkerPoolResultGenerator:
             for (obj_id, result) in output_arr:
                 yield result
 
-        self.parent_obj.close()
-        self.parent_obj.join_workers()
+        self.parent_obj._close()
         if exceptions_arr:
             raise Exception(*exceptions_arr)
 
@@ -233,7 +231,7 @@ class Pool:
 
     def __exit__(self, type, value, tb):
         # Close will not do anything if the close function was called already
-        self.close()
+        self._close()
         # If a process "refuses" to stop it can be terminated.
         # Unfortunately, threads cannot be stopped / terminated in Python,
         # but they will die when the main process terminates.
@@ -242,12 +240,13 @@ class Pool:
                 p.terminate()
         self.exited = True
 
-    def join_workers(self):
+    def _join_workers(self):
         for p in self.workers:
             p.join(self.join_timeout)
 
-    def close(self):
+    def _close(self):
         if not self.term_signal_sent:
             for _ in range(self.num_workers):
                 self.in_queue.put(None)  # end-of-work signal: one per worker
+            self._join_workers()
         self.term_signal_sent = True

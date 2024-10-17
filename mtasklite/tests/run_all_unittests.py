@@ -2,9 +2,9 @@
 import argparse
 import sys
 
-from .test_stateless import test_stateless_1
-from .test_stateful import test_stateful_1
-from .test_misc import test_misc_1
+from mtasklite.tests.test_stateless import test_stateless_1
+from mtasklite.tests.test_stateful import test_stateful_1
+from mtasklite.tests.test_misc import test_misc_1
 
 
 def main(args):
