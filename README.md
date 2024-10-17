@@ -37,15 +37,8 @@ However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` s
       
 By default `mtasklite` (and `pqdm`) uses `tqdm` to display the progress. For arrays and other  size-aware iterables, one will see an actual progress bar going from 0% to 100. For un-sized iterables, one will see a dynamically updated number of processed items. 
 
-Also note that by default both `mtasklite` and PQDM ignore exceptions: When a task terminates due to an exception this exception is returned **instead of** a return value. You can check if exception happened using a convenience wrapper:
-```
-from mtasklite import is_exception
+Also note that by default both `mtasklite` and PQDM ignore exceptions: When a task terminates due to an exception this exception is returned **instead of** a return value. For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
 
-if is_exception(ret_val):
-   do_something()
-```
-
-For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
 
 To make the library initialize object-based (with a given set of parameters) workers, one needs to:
 

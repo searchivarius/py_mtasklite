@@ -1,18 +1,21 @@
 # PQDM (in) compatibility notes
 
-**and works on Mac OS without setting the process creation method to `fork`**
+Although we have a `pqmd` compatibility mode, it is not possible to be 100\% for several reasons: Most importantly because we have to return an iterable rather than a least (for memory-efficient processes).
 
-Although we have a pqmd compatibility mode, for various reasons, we have decided to not make our code
-100% compatible. There are a couple of crucial differences:
+Here is the complete list of major interface/implementation differences:
 
 1. We return an iterable, not a list.
 
-2. Because semantics of the worker parameter is extended (it can be a list including both functions and statefull class objects) we changed the parameter name `function` to `worker_or_worker_arr`. Likewise, because we support generic iterables rather than lists, the parameter name `array` was changed into `input_iterable`. However, the order of these arguments remains the same, so renaming should matter little in practice.
+2. Because we support a wider range of worker types we changed the parameter name `function` to `worker_or_worker_arr`. An array of workers can have regular functions, object with delayed initializations, or a mix of both. 
 
-3. The 'direct' argument passing mode name is confusing and we called it a single-argument mode instead (and define a new constant). Fortunately, this is a default argument passing value, so we anticipate that no code change will be required.
+3. Likewise, because we support generic iterables rather than lists, the parameter name `array` was changed into `input_iterable`. However, the order of these arguments remains the same, so renaming should not cause any issues if the first two parameters are passed as **positional** arguments.
 
-4. Regarding the bounded execution flag, we set it to false by default. Moreover, we cannot support it for un-sized iterators. However, if the iterator is for the object with a known size, we simulate unbounded execution by setting the chunk size to be equal to the length of the input (and setting prefill ratio to 1).
+4. When `worker_or_worker_arr` accepts a list of workers, the argument `n_jobs` need not to be specified because the number of jobs should be equal to the number of workers in the array.
 
-5. We always start a thread/process for a worker even if n_jobs == 1.
 
-6. Clarify on the default behavior of the exceptions, which is IGNORE
+5. The 'direct' argument passing mode name in `pqdm` is confusing. Thus, we renamed it to `single_arg`. However, this is a default argument passing value (in both `pqdm` and `mtasklite`. Thus, unless is specified explicitly in the code that uses `pqdm` (which is unlikely) no additional changes are required when using `mtasklite` variant of `pqdm`.
+
+6. Regarding the bounded execution flag, we set it to `False` by default, which enables "lazy" iteration. 
+
+8. We always start a thread/process for a worker even if n_jobs == 1.
+
