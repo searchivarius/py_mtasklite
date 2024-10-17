@@ -33,7 +33,7 @@ result = pqdm(input_arr, square, n_jobs)
 list(result)
 ```
 
-However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` supports a truly lazy processing of results where both the input and output queues are bounded by default. To make this possible, `mtasklite` returns an **iterable**. For the sake of simplicity, in this example we explicitly converted this iterable to an array.
+However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` supports a truly lazy processing of results where both the input and output queues are bounded by default. To make this possible, `mtasklite` returns an **iterable** wrapped inside a context manager object. For the sake of simplicity, in this example we explicitly converted this iterable to an array.
 
 By default, we assume (similar to `pqdm`) that the worker function has only a single argument. Thus, we read values from the input iterable and pass them to the function one by one. However, we also support arbitrary positional or keyword (kwarg) arguments. For a description of argument-passing methods, please see [this page](docs/argument_passing.md)
       
