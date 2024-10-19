@@ -76,8 +76,6 @@ result
 # Should be equal to [1, 4, 9, 16, 25]
 ```
 
-For a more detailed discussion, please, the [following page](docs/usage.md).
-
 # Features
 
 `mtasklite` extends the functionality of `pqdm` and has the following features:

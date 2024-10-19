@@ -4,7 +4,7 @@ Although we have a `pqdm` compatibility mode, it is not possible to be 100% comp
 
 Here is the complete list of major interface/implementation differences:
 
-1. We return an iterable, wrapped in a **context manager object** rather than a list. As a result, if you do not iterate through the items, worker processes or threads will not be terminated! 
+1. We return an iterable, wrapped in a **context manager object** rather than a list. As a result, if you do not iterate through the items, worker processes or threads will not be terminated! Please, see [this page for more detail](docs/context_manager_and_resource_leakage.md).
 
 2. Because we support a wider range of worker types we changed the parameter name `function` to `worker_or_worker_arr`. An array of workers can include regular functions, objects with delayed initialization, or a mix of both. 
 
