@@ -1,3 +1,5 @@
+[![PyPI version](https://img.shields.io/pypi/v/mtasklite.svg)](https://pypi.python.org/pypi/mtasklite/)
+
 # MultiTASKLite: A lightweight library for Python multitasking
 
 This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features--advantages-over-pqdm)), timeouts, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
