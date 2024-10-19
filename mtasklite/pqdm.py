@@ -8,6 +8,15 @@ NO_EXPLICIT_POOL_KWARGS = ['bounded', 'exception_behaviour', 'worker_or_worker_a
 
 
 class CustomContextManager:
+    """
+    A custom context manager that combines tqdm and pool objects.
+
+    This class allows for simultaneous management of a tqdm progress bar and a processing pool,
+    ensuring proper setup and teardown of both objects.
+
+    :param tqdm_obj: A tqdm object for progress tracking.
+    :param pool_obj: A Pool object for parallel processing.
+    """
     def __init__(self, tqdm_obj, pool_obj):
         self.tqdm_obj = tqdm_obj
         self.pool_obj = pool_obj
@@ -25,7 +34,6 @@ class CustomContextManager:
         return self.tqdm_obj.__iter__()
 
 
-# Do not use directly, but rather import pqdm from threads or processes
 def _pqdm(
     input_iterable,
     worker_or_worker_arr,
@@ -37,6 +45,27 @@ def _pqdm(
     tqdm_class: tqdm_type = tqdm_auto,
     **kwargs
 ):
+    """
+     Internal function to create a parallel processing queue with progress tracking.
+
+     This function should not be used directly. Instead, import pqdm from threads or processes.
+
+     :param input_iterable: Iterable to be processed in parallel.
+     :param worker_or_worker_arr: A single worker function/object or a list of worker functions/objects
+     :param n_jobs: Number of worker processes/threads to create (ignored if worker_or_worker_arr is a list)
+     :param argument_type: Type of argument passing. Defaults to ArgumentPassing.AS_SINGLE_ARG.
+     :param bounded: Whether to use bounded execution mode: The bounded execution mode is memory efficient.
+                     In the unbounded execution mode, all input items are loaded into memory.
+     :param exception_behaviour: How to handle exceptions. Defaults to ExceptionBehaviour.IGNORE.
+     :param use_threads: Whether to use threads instead of processes. Defaults to False.
+     :param tqdm_class: The tqdm class to use for progress tracking. Defaults to tqdm_auto.
+     :param kwargs: Additional keyword arguments for mtasklite.Pool and tqdm. Do not include arguments,
+                    which this function includes explicitly!
+
+     :return: A CustomContextManager instance combining tqdm and pool functionality.
+     :raises Exception: Several arguments mtasklite.Pool, e.g., n_jobs, are explict arguments of this function.
+                        If they are specified in kwargs, an exception will be thrown.
+     """
     add_pool_kwargs, tqdm_kwargs = divide_kwargs(kwargs, Pool)
     for arg in add_pool_kwargs:
         if arg in NO_EXPLICIT_POOL_KWARGS:

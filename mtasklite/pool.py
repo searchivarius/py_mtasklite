@@ -143,10 +143,27 @@ class WorkerPoolResultGenerator:
 
 
 class Pool:
+    """
+     A class representing a pool of workers for parallel processing.
+
+     This class manages a pool of worker processes or threads that can execute tasks in parallel.
+     It supports both bounded and unbounded execution modes, stateless and stateful workers. Moreover,
+     it can handle different argument passing strategies and exception behaviors.
+    """
     def __enter__(self):
         return self
 
     def __call__(self, input_iterable):
+        """
+        Call the Pool object as a function to process the input iterable.
+
+        :param input_iterable: An iterable containing inputs to be processed
+        :return: A generator yielding results from the worker pool. This generator is also a context manager.
+        :rtype: :class:`WorkerPoolResultGenerator`
+        :raises Exception: If unbounded execution is used with a non-sized iterator. The generator itself may raise
+                           exceptions if workers raise exceptions. The exact behavior depends on the value
+                           of the exception_behavior argument of the constructor.
+        """
         if self.bounded:
             chunk_size = self.bounded_exec_chunk_size
             chunk_prefill_ratio = self.bounded_exec_chunk_prefill_ratio
@@ -173,6 +190,22 @@ class Pool:
                  use_threads: bool = False,
                  task_timeout: float = None,
                  join_timeout: float = None):
+        """
+        Initialize the Pool object with the given parameters.
+
+        :param worker_or_worker_arr: A single worker function/object or a list of worker functions/objects
+        :param n_jobs: Number of worker processes/threads to create (ignored if worker_or_worker_arr is a list)
+        :param argument_type: Specifies how arguments are passed to workers
+        :param exception_behavior: Defines how exceptions are handled
+        :param bounded: Whether to use bounded execution mode: The bounded execution mode is memory efficient.
+                        In the unbounded execution mode, all input items are loaded into memory.
+        :param chunk_size: Size of chunks for bounded execution
+        :param chunk_prefill_ratio: Prefill ratio for chunks in bounded execution
+        :param is_unordered: Whether results can be returned in any order
+        :param use_threads: Use threads instead of processes
+        :param task_timeout: Timeout for individual tasks
+        :param join_timeout: Timeout for joining workers
+        """
 
         if type(worker_or_worker_arr) == list:
             assert n_jobs is None or n_jobs == len(worker_or_worker_arr), \
