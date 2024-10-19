@@ -1,6 +1,6 @@
 # MultiTASKLite: A lightweight library for Python multitasking
 
-This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features)), timeouts, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features--advantages-over-pqdm)), timeouts, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
 This enables:
   1. Using different GPUs, models, or network connections in different workers.
@@ -45,7 +45,7 @@ By default, we assume (similar to `pqdm`) that the worker function has only a si
       
 By default `mtasklite` (and `pqdm`) uses `tqdm` to display the progress. For arrays and other size-aware iterables, one will see a progress bar moving from 0% to 100. For unsized iterables, one will see a dynamically updated number of processed items. 
 
-Also note that by default both `mtasklite` and PQDM ignore exceptions: When a task terminates due to an exception this exception is returned **instead of** a return value. For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
+Also note that by default both `mtasklite` and PQDM ignore exceptions: When a task terminates due to an exception this exception is returned **instead of** returning a value. For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
 
 
 To make the library initialize object-based (with a given set of parameters) workers, you need to:
@@ -70,7 +70,7 @@ class Square:
 
 input_arr = [1, 2, 3, 4, 5]
 
-# Four workers with different arguments
+# Four workers with different initialization arguments
 with pqdm(input_arr, [Square(0), Square(1), Square(2), Square(3)])  as pbar:
     result = list(pbar) 
 
@@ -80,7 +80,7 @@ result
 
 # Features & Advantages over PQDM
 
-`mtasklite` extends the functionality of `pqdm` and provides painless `map-style` parallelization with both stateless and object-based (stateful) workers. Like `pqdm` this library allows enjoyable parallelization with a progress bar, but with the following advantages (`pqdm` shortcomings are illustrated by [this sample notebook](examples/pqdm_example.ipynb):
+`mtasklite` extends the functionality of `pqdm` and provides painless `map-style` parallelization with both stateless and object-based (stateful) workers. Like `pqdm` this library allows enjoyable parallelization with a progress bar, but with the following advantages (`pqdm` shortcomings are illustrated by [this sample notebook](examples/pqdm_example.ipynb)):
 
 * `mtasklite` permits initialization of each worker using worker-specific parameters via a cool delayed initialization trick.
 * `mtasklite` supports truly lazy processing of results where both the input and output queues are bounded (great for huge inputs).
