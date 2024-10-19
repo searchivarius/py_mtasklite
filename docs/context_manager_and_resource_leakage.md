@@ -2,7 +2,7 @@
 
 Our `mtasklite` library explicitly starts a specified number of processes or threads, which need to be terminated when all work is done. This is handled by our code automatically in two cases:
 
-1. When it detects the end of input (i.e., all input items are read).
+1. When we detect the end of input (i.e., all input items are read).
 2. When the object is created using the `with-statement` and the respective `with-block` finishes.
 
 Let us consider an example without the context manager:
@@ -40,7 +40,7 @@ for ret in pqdm(input_arr, worker_func, n_jobs):
         # do something
 ```
 
-However, in many cases we may want to terminate the iteration right after receiving the exception (imagine you query the network resource and your credentials have expired). To cover this and other similar use cases, it is easier to **always** use the `with-statement`:
+However, in many cases we may want to terminate the iteration right after receiving the exception (imagine you query the network resource and your credentials have expired). To cover this and other similar use cases, it is easier and safer to **always** use the `with-statement`:
 
 ```
 from mtasklite.processes import pqdm

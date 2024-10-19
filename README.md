@@ -1,13 +1,15 @@
 # MultiTASKLite: A lightweight library for Python multitasking
 
-This `mtasklite` library is inspired by the simplicity of [pqdm](https://github.com/niedakh/pqdm), but it improves upon PQDM in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features)), timeouts, and context managers (works with the `with` statement). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features)), timeouts, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
 This enables:
   1. Using different GPUs, models, or network connections in different workers.
-  2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time), it will be done once (per process/thread)  **before** processing input items.
-  3. Logging and book-keeping: Each worker is represented by an object that "lives" as long as we have items to process (data can be stored in the object attributes). 
+  2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time), it will be done once (per process/thread)  **before** processing input items. See the [Spacy-based tokenization notebook](examples/mtasklite_pqdm_spacy_tokenization_demo.ipynb) for an example.
+  3. Logging and bookkeeping: Each worker is represented by an object that "lives" as long as we have items to process (data can be stored in the object attributes). 
   
 The `mtasklite` package provides **pqdm-compatibility** wrappers, which can be used as a (nearly) drop-in replacement of `pqdm`. For an overview of differences, please refer to the [pqdm-compatibility notes](docs/pqdm_compatibility.md). Despite this, we would encourage using the class [mtasklite.Pool](mtasklite/pool.py) directly and with the `with-statement` (see a [sample notebook](examples/mtasklite_pool_square_demo.ipynb)).
+
+This library is replacing [`py_stateful_map`](https://github.com/searchivarius/py_stateful_map). The objective **of this replacement** to provide a more convenient and user-friendly interface as well as to fix several issues.
 
 # Install & Use
 
@@ -17,7 +19,7 @@ To install:
 
 ## Use via pqdm-compatibility wrappers
   
-`mtasklite` provides convenience wrappers that largely mimic `pqdm` behavior and parameters, in particular, in terms passing arguments to (function) workers and handling exceptions:
+This library provides convenience wrappers that largely mimic `pqdm` behavior and parameters, in particular, in terms passing arguments to (function) workers and handling exceptions:
 
 ```
 from mtasklite.processes import pqdm
@@ -37,7 +39,7 @@ result
 
 However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` supports a truly lazy processing of results where both the input and output queues are bounded by default. To make this possible, `mtasklite` returns an **iterable** wrapped inside a context manager object. For the sake of simplicity, in this example we explicitly converted this iterable to an array.
 
-Another difference here is the use of the `with-statement`. Although one can avoid using `with-statement`, not consuming the complete input (due to, e.g., an exception) will lead to resource leakage in the form of "hanging" processes and threads. It is only safe to do in the exception-ignoring mode when you ensure that the whole input is "consumed". Please, see [this page for more detail](docs/context_manager_and_resource_leakage.md).
+Another difference here is the use of the `with-statement`. Although this is not mandatory, not consuming the complete input (due to, e.g., an exception) will lead to resource leakage in the form of "hanging" processes and threads. It is only safe to do in the exception-ignoring mode when you ensure that the whole input is "consumed". Please, see [this page for more details](docs/context_manager_and_resource_leakage.md).
 
 By default, we assume (similar to `pqdm`) that the worker function has only a single argument. Thus, we read values from the input iterable and pass them to the function one by one. However, we also support arbitrary positional or keyword (kwarg) arguments. For a description of argument-passing methods, please see [this page](docs/argument_passing.md)
       
@@ -76,19 +78,38 @@ result
 # Should be equal to [1, 4, 9, 16, 25]
 ```
 
-# Features
+# Features & Advantages over PQDM
 
-`mtasklite` extends the functionality of `pqdm` and has the following features:
+`mtasklite` extends the functionality of `pqdm` and provides painless `map-style` parallelization with both stateless and object-based (stateful) workers. Like `pqdm` this library allows enjoyable parallelization with a progress bar, but with the following advantages (`pqdm` shortcomings are illustrated by [this sample notebook](examples/pqdm_example.ipynb):
 
-* A painless `map-style` parallelization with both stateless and object-based (stateful) workers. Unlike `pqdm`, `mtasklite` permits initialization of each worker using worker-specific parameters via a cool delayed initialization trick. 
+* `mtasklite` permits initialization of each worker using worker-specific parameters via a cool delayed initialization trick.
+* `mtasklite` supports truly lazy processing of results where both the input and output queues are bounded (great for huge inputs).
+* Thanks to building on top of the [multiprocess library](https://github.com/uqfoundation/multiprocess) it has a better cross-platform support, whereas `pqdm` requires setting `multiprocessing.set_start_method('fork')` when running on MacOS from, e.g., a Jupyter Notebook.
+
+
+A more detailed overview of features:
+* Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that chooses an appropriate `tqdm` representation depending on the environment (e.g., a terminal vs a Jupyter notebook). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity). See [this notebook](examples/mtasklite_pool_square_demo.ipynb) or an example.
+* The library supports any input iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
+* Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class.
 * Support for unordered execution and task timeouts.
-* Support for any iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
-* Support for truly lazy processing of results where both the input and output queues are bounded (great for huge inputs).
-* Logging and bookkeeping: Each worker is represented by an object that lives as long as we have items to process. Thus, the object's state can be used to save important information. The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution** if you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
-* Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that chooses an appropriate `tqdm` representation depending on the environment (most notably in Jupyter notebooks). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity).
-* Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class. 
-* If you use `pqdm` in some contexts on MacOS, e.g., notably in Jupyter notebooks, you have to set the process start type to `fork`, or you will have pickling errors:
-`multiprocessing.set_start_method('fork')`.
+* The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution**: If you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
+
+# Contributing
+
+If you are reporting a bug, please include:
+
+* Your operating system name and version.
+* Any details about your local setup that might be helpful in troubleshooting.
+* Detailed steps to reproduce the bug.
+
+If you are submitting a pull request, make sure to run the tests. Feel free to expand the tests as well:
+```
+# Install the code in the "debug" mode. Run from the root directory:
+pip install -e .
+python -m mtasklite.tests.
+# Run the test, feel free to use larger and smaller values of --n_elem as well:
+python -m mtasklite.tests.run_all_unittests --n_elem 10
+```
 
 # Credits
 
