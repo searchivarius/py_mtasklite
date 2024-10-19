@@ -1,3 +1,4 @@
+import mtasklite.threads
 from mtasklite.constants import ArgumentPassing, ExceptionBehaviour
 from mtasklite.processes import pqdm
 from mtasklite.utils import current_function_name, is_exception
@@ -97,18 +98,32 @@ def test_exited_1():
     input_arr = [1, 2, 3, 4]
 
     for use_threads in tqdm([False, True], desc=f'Testing {current_function_name()}'):
-        with Pool(ret_single_arg, 4, use_threads=use_threads) as pbar:
-            result = pbar(input_arr)
+        with Pool(ret_single_arg, 4, use_threads=use_threads) as pbar1:
+            result = pbar1(input_arr)
             assert not result.parent_obj.exited, \
                 f'Unexpected exit status before leaving with: {result.parent_obj.exited}'
         assert result.parent_obj.exited, \
             f'Unexpected exit status after leaving with: {result.parent_obj.exited}'
 
-        pbar = Pool([ret_single_arg] * 4, use_threads=use_threads)
-        result = pbar(input_arr)
-        list(result) # forces reading and terminating the threads
+        if use_threads:
+            pqdm_func = mtasklite.threads.pqdm
+        else:
+            pqdm_func = mtasklite.processes.pqdm
+
+        with pqdm_func(input_arr, ret_single_arg, 4) as pbar2:
+            assert not pbar2.pool_obj.parent_obj.exited, \
+                f'Unexpected exit status after leaving with: {pbar2.pool_obj.parent_obj.exited}'
+
+        assert pbar2.pool_obj.parent_obj.exited, \
+            f'Unexpected exit status after leaving with: {pbar2.pool_obj.parent_obj.exited}'
+
+        pbar3 = Pool([ret_single_arg] * 4, use_threads=use_threads)
+        result = pbar3(input_arr)
+        list(result) # forces reading and terminating the workers
+        # despite workers are terminated the __exit__ function was not called
         assert not result.parent_obj.exited, \
             f'Unexpected exit status when context manager is not used: {result.parent_obj.exited}'
+
 
 
 def test_exited_2():

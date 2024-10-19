@@ -17,7 +17,7 @@ To install:
 
 ## Use via pqdm-compatibility wrappers
   
-`mtasklite` provides convenience wrappers that (with a few exceptions) mimic `pqdm` behavior and parameters, in particular, in terms passing arguments to (function) workers and handling exceptions:
+`mtasklite` provides convenience wrappers that largely mimic `pqdm` behavior and parameters, in particular, in terms passing arguments to (function) workers and handling exceptions:
 
 ```
 from mtasklite.processes import pqdm
@@ -28,12 +28,16 @@ def square(a):
 input_arr = [1, 2, 3, 4, 5]
 
 n_jobs = 4 
-result = pqdm(input_arr, square, n_jobs)
+with pqdm(input_arr, square, n_jobs) as pbar:
+    result = list(pbar)
 
-list(result)
+result
+# Should be equal to [1, 4, 9, 16, 25]
 ```
 
 However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` supports a truly lazy processing of results where both the input and output queues are bounded by default. To make this possible, `mtasklite` returns an **iterable** wrapped inside a context manager object. For the sake of simplicity, in this example we explicitly converted this iterable to an array.
+
+Another difference here is the use of the `with-statement`. Although one can avoid using `with-statement`, not consuming the complete input (due to, e.g., an exception) will lead to resource leakage in the form of "hanging" processes and threads. It is only safe to do in the exception-ignoring mode when you ensure that the whole input is "consumed". Please, see [this page for more detail](docs/context_manager_and_resource_leakage.md).
 
 By default, we assume (similar to `pqdm`) that the worker function has only a single argument. Thus, we read values from the input iterable and pass them to the function one by one. However, we also support arbitrary positional or keyword (kwarg) arguments. For a description of argument-passing methods, please see [this page](docs/argument_passing.md)
       
@@ -65,12 +69,14 @@ class Square:
 input_arr = [1, 2, 3, 4, 5]
 
 # Four workers with different arguments
-result = pqdm(input_arr, [Square(0), Square(1), Square(2), Square(3)])
+with pqdm(input_arr, [Square(0), Square(1), Square(2), Square(3)])  as pbar:
+    result = list(pbar) 
 
-list(result)
+result
+# Should be equal to [1, 4, 9, 16, 25]
 ```
 
-For a more detailed discussion, including the usage with a `with-statement` (which can help prevent resource leakage), please, see the [following page](docs/usage.md).
+For a more detailed discussion, please, the [following page](docs/usage.md).
 
 # Features
 
