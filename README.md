@@ -93,6 +93,7 @@ A more detailed overview of features:
 * Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that chooses an appropriate `tqdm` representation depending on the environment (e.g., a terminal vs a Jupyter notebook). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity). See [this notebook](examples/mtasklite_pool_square_demo.ipynb) or an example.
 * The library supports any input iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
 * Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class.
+* In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args.
 * Support for unordered execution and task timeouts.
 * The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution**: If you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
 
