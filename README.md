@@ -43,7 +43,7 @@ However, **unlike** `pqdm`, which returns all results as an array, `mtasklite` s
 
 Another difference here is the use of the `with-statement`. Although this is not mandatory, not consuming the complete input (due to, e.g., an exception) will lead to resource leakage in the form of "hanging" processes and threads. It is only safe to do in the exception-ignoring mode when you ensure that the whole input is "consumed". Please, see [this page for more details](docs/context_manager_and_resource_leakage.md).
 
-By default, we assume (similar to `pqdm`) that the worker function has only a single argument. Thus, we read values from the input iterable and pass them to the function one by one. However, we also support arbitrary positional or keyword (kwarg) arguments. For a description of argument-passing methods, please see [this page](docs/argument_passing.md)
+By default, we assume (similar to `pqdm`) that the worker function has only a single argument. Thus, we read values from the input iterable and pass them to the function one by one. However, we also support arbitrary positional or keyword (kwarg) arguments. For a description of argument-passing methods, please see [this page](docs/argument_passing.md).
       
 By default `mtasklite` (and `pqdm`) uses `tqdm` to display the progress. For arrays and other size-aware iterables, one will see a progress bar moving from 0% to 100. For unsized iterables, one will see a dynamically updated number of processed items. 
 
@@ -93,9 +93,25 @@ A more detailed overview of features:
 * Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that chooses an appropriate `tqdm` representation depending on the environment (e.g., a terminal vs a Jupyter notebook). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity). See [this notebook](examples/mtasklite_pool_square_demo.ipynb) or an example.
 * The library supports any input iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
 * Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class.
-* In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args.
+* In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args. For a full-list of "passable" arguments, please [see this section of README](#list-of-mtasklitepool-arguments).
 * Support for unordered execution and task timeouts.
 * The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution**: If you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
+
+# List of `mtasklite.Pool` arguments 
+
+Here is a full list of `mtasklite.Pool` arguments that can be passed through `pqdm` function:
+
+* `input_iterable` Iterable to be processed in parallel.
+* `worker_or_worker_arr` A single worker function/object or a list of worker functions/objects.
+* `n_jobs` Number of worker processes/threads to create (ignored if `worker_or_worker_arr` is a list) .
+* `argument_type` Specifies how arguments are passed to workers. For a description of argument-passing methods, please see [this page](docs/argument_passing.md).
+* `exception_behavior` Defines how exceptions are handled. For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
+* `bounded` Whether to use bounded execution mode: The bounded execution mode is memory efficient.  In the unbounded execution mode, all input items are loaded into memory.
+* `chunk_size` Size of chunks for bounded execution.
+* `chunk_prefill_ratio` Prefill ratio for chunks in bounded execution.
+* `is_unordered` Whether results can be returned in any order.
+* `task_timeout` Timeout for individual tasks.
+* `join_timeout` Timeout for joining workers.
 
 # Contributing
 
