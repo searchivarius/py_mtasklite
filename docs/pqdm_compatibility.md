@@ -12,7 +12,7 @@ Here is the complete list of major interface/implementation differences:
 
 5. Likewise, because we support generic iterables rather than lists, the parameter name `array` was changed to `input_iterable`. However, the order of these arguments remains the same, so renaming should not cause any issues if the first two parameters are passed as **positional** arguments.
 
-5. The 'direct' argument passing mode name in `pqdm` is confusing. Thus, we renamed it to `single_arg`. However, this is a default argument passing value (in both `pqdm` and `mtasklite`). Thus, unless `direct` is specified explicitly in the code that uses `pqdm` (which is unlikely), no additional changes will be required due to this renaming.
+5. The `direct` argument passing mode name in `pqdm` is confusing. Thus, we renamed it to `single_arg`. However, this is a default argument passing value (in both `pqdm` and `mtasklite`). Thus, unless `direct` is specified explicitly in the code that uses `pqdm` (which is unlikely), no additional changes will be required due to this renaming.
 
 6. Regarding the bounded execution flag, we set it to `False` by default, which enables "lazy" iteration with a bounded input/output queue.
 
