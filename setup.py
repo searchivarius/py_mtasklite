@@ -17,6 +17,9 @@ setup(
     name=PACKAGE_NAME,
     version=__version__,
     description='An pqdm-compatible (almost) extension that supports stateful worker pools with both sized and unsized iterables.',
+    project_urls={
+        "Homepage": "https://github.com/searchivarius/py_mtasklite",
+    },
     author='Leonid Boytsov',
     author_email='leo@boytsov.info',
     long_description=long_description,
