@@ -13,6 +13,8 @@ The `mtasklite` package provides **pqdm-compatibility** wrappers, which can be u
 
 This library is replacing [`py_stateful_map`](https://github.com/searchivarius/py_stateful_map). The objective **of this replacement** to provide a more convenient and user-friendly interface as well as to fix several issues.
 
+To contribute please [refer to the guidelines](docs/contributing.md).
+
 # Install & Use
 
 To install:
@@ -93,42 +95,10 @@ A more detailed overview of features:
 * Just import `processes.pqdm` or `threads.pqdm` for a (nearly) drop-in replacement of the `pqdm` code. By default, this code uses the `tqdm.auto.tqdm_auto` class that chooses an appropriate `tqdm` representation depending on the environment (e.g., a terminal vs a Jupyter notebook). Alternatively, multitasking can be used separately from tqdm (via `mtasklite.Pool`) and/or `tqdm` can be applied explicitly to the output iterable (for improved code clarity). See [this notebook](examples/mtasklite_pool_square_demo.ipynb) or an example.
 * The library supports any input iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
 * Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class.
-* In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args. For a full-list of "passable" arguments, please [see this section of README](#list-of-mtasklitepool-arguments).
+* In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args. For a full-list of "passable" arguments, please [see this page](docs/pool_arguments.md).
 * Support for unordered execution and task timeouts.
 * The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution**: If you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
 
-# List of `mtasklite.Pool` arguments 
-
-Here is a full list of `mtasklite.Pool` arguments that can be passed through `pqdm` function:
-
-* `input_iterable` Iterable to be processed in parallel (1st positional argument).
-* `worker_or_worker_arr` A single worker function/object or a list of worker functions/objects (2d positional argument).
-* `n_jobs` Number of worker processes/threads to create (3rd positional argument). It is ignored if `worker_or_worker_arr` is a list.
-* `argument_type` Specifies how arguments are passed to workers (4th positional argument). For a description of argument-passing methods, please see [this page](docs/argument_passing.md).
-* `bounded` Whether to use bounded execution mode, which is `True` by default (5th  positional argument). The bounded execution mode is memory efficient.  In the unbounded execution mode, all input items are loaded into memory.
-* `exception_behavior` Defines how exceptions are handled (6th  positional argument). For a description of other exception-processing modes, please, see [this page](docs/exception_processing.md).
-* `chunk_size` Size of chunks for bounded execution (kwarg-only).
-* `chunk_prefill_ratio` Prefill ratio for chunks in bounded execution (kwarg-only).
-* `is_unordered` Whether results can be returned in any order (kwarg-only).
-* `task_timeout` Timeout for individual tasks (kwarg-only).
-* `join_timeout` Timeout for joining workers (kwarg-only).
-
-# Contributing
-
-If you are reporting a bug, please include:
-
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
-* Detailed steps to reproduce the bug.
-
-If you are submitting a pull request, make sure to run the tests. Feel free to expand the tests as well:
-```
-# Install the code in the "debug" mode. Run from the root directory:
-pip install -e .
-
-# Run the test, feel free to use larger and smaller values of --n_elem as well:
-python -m mtasklite.tests.run_all_unittests --n_elem 10
-```
 
 # Credits
 
