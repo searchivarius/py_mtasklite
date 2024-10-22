@@ -61,8 +61,6 @@ def run_generic_stateful_test(n_elem, n_jobs,
                 f'Wrong worker ID received {worker_id} should be in he range [0, {n_jobs-1}]'
             result.append(e)
 
-    if len(result) != len(expected_sorted_result):
-        import pdb ; pdb.set_trace()
     assert len(result) == len(expected_sorted_result), f'Length different, returned: {len(result)}, expected {len(expected_sorted_result)}'
 
     if is_unordered:
