@@ -69,6 +69,8 @@ def run_generic_stateless_test(n_elem, n_jobs,
     if is_unordered:
         assert set(result) == set(expected_sorted_result), 'result set differ, is_unordered'
     else:
+        if result != expected_sorted_result:
+          import pdb ; pdb.set_trace()
         assert result == expected_sorted_result, 'result set differ, is_ordered'
 
 

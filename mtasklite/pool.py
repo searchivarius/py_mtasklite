@@ -1,7 +1,8 @@
 import concurrent.futures
 import multiprocess as mp
 import inspect
-import pdb
+
+from heapq import heappush, heappop
 
 from .constants import ExceptionBehaviour, ArgumentPassing
 from .delayed_init import ShellObject
@@ -50,11 +51,13 @@ class WorkerWrapper:
 
 class WorkerPoolResultGenerator:
     def __init__(self, parent_obj, input_iterable,
+                 bounded,
                  is_unordered,
                  chunk_size, chunk_prefill_ratio):
         self.parent_obj = parent_obj
         self.input_iter = iter(input_iterable)
         self.is_unordered = is_unordered
+        self.bounded = bounded
         self.chunk_size = chunk_size
         self.chunk_prefill_ratio = chunk_prefill_ratio
 
@@ -99,19 +102,25 @@ class WorkerPoolResultGenerator:
 
         exceptions_arr = []
 
+        out_queue = []
+        last_out_obj = -1
+
         while not finished_input or received_qty < submitted_qty:
             try:
-                for k in range(curr_batch_size):
+                curr_submit_qty = 0
+                while True:
                     self.parent_obj.in_queue.put((submitted_qty, next(self.input_iter)))
                     assert self._length is None or submitted_qty < self._length
                     submitted_qty += 1
+                    curr_submit_qty += 1
+                    if self.bounded and curr_submit_qty >= curr_batch_size:
+                        break
             except StopIteration:
                 finished_input = True
 
             curr_batch_size = self.chunk_size
             left_qty = submitted_qty - received_qty
 
-            output_arr = []
             for k in range(min(self.chunk_size, left_qty)):
                 obj_id, result = self.parent_obj.out_queue.get()
                 if is_exception(result):
@@ -127,15 +136,25 @@ class WorkerPoolResultGenerator:
                 if self.is_unordered:
                     yield result
                 else:
-                    output_arr.append((obj_id, result))
+                    heappush(out_queue, (obj_id, result))
+                    if out_queue[0][0] == last_out_obj + 1:
+                        last_out_obj, result = heappop(out_queue)
+                        yield result
 
                 assert received_qty < submitted_qty
                 assert self._length is None or received_qty < self._length
                 received_qty += 1
 
-            output_arr.sort()
-            for (obj_id, result) in output_arr:
+            while out_queue and out_queue[0][0] == last_out_obj + 1:
+                last_out_obj, result = heappop(out_queue)
                 yield result
+
+        while out_queue and out_queue[0][0] == last_out_obj + 1:
+            last_out_obj, result = heappop(out_queue)
+            yield result
+
+        assert not out_queue, \
+            f'Logic error, the output queue should be empty at this point, but it has {len(out_queue)} elements'
 
         self.parent_obj._close()
         if exceptions_arr:
@@ -160,32 +179,21 @@ class Pool:
         :param input_iterable: An iterable containing inputs to be processed
         :return: A generator yielding results from the worker pool. This generator is also a context manager.
         :rtype: :class:`WorkerPoolResultGenerator`
-        :raises Exception: If unbounded execution is used with a non-sized iterator. The generator itself may raise
-                           exceptions if workers raise exceptions. The exact behavior depends on the value
-                           of the exception_behavior argument of the constructor.
         """
-        if self.bounded:
-            chunk_size = self.bounded_exec_chunk_size
-            chunk_prefill_ratio = self.bounded_exec_chunk_prefill_ratio
-        else:
-            if is_sized_iterator(input_iterable):
-                chunk_size = len(input_iterable)
-                chunk_prefill_ratio = 1
-            else:
-                raise Exception('Unbounded execution requires length-providing iterables!')
-        chunk_size = max(chunk_size, 1)  # don't let this to be < 1
-        chunk_prefill_ratio = max(chunk_prefill_ratio, 1)  # don't let this to be < 1
+        assert self.chunk_size >= 1
+        assert self.chunk_prefill_ratio >= 1
+
         return WorkerPoolResultGenerator(parent_obj=self, input_iterable=input_iterable,
-                                         is_unordered=self.is_unordered,
-                                         chunk_size=chunk_size,
-                                         chunk_prefill_ratio=chunk_prefill_ratio)
+                                         is_unordered=self.is_unordered, bounded=self.bounded,
+                                         chunk_size=self.chunk_size,
+                                         chunk_prefill_ratio=self.chunk_prefill_ratio)
 
     def __init__(self, worker_or_worker_arr,
                  n_jobs: int = None,
                  argument_type: ArgumentPassing = ArgumentPassing.AS_SINGLE_ARG,
                  exception_behavior: ExceptionBehaviour = ExceptionBehaviour.IMMEDIATE,
                  bounded: bool = True,
-                 chunk_size: int = 100, chunk_prefill_ratio: int = 2,
+                 chunk_size: int = None, chunk_prefill_ratio: int = None,
                  is_unordered: bool = False,
                  use_threads: bool = False,
                  task_timeout: float = None,
@@ -199,8 +207,8 @@ class Pool:
         :param exception_behavior: Defines how exceptions are handled
         :param bounded: Whether to use bounded execution mode: The bounded execution mode is memory efficient.
                         In the unbounded execution mode, all input items are loaded into memory.
-        :param chunk_size: Size of chunks for bounded execution
-        :param chunk_prefill_ratio: Prefill ratio for chunks in bounded execution
+        :param chunk_size: Size of chunk
+        :param chunk_prefill_ratio: Prefill ratio for chunks
         :param is_unordered: Whether results can be returned in any order
         :param use_threads: Use threads instead of processes
         :param task_timeout: Timeout for individual tasks
@@ -223,9 +231,8 @@ class Pool:
             self.num_workers = max(int(n_jobs), 1)
 
         self.bounded = bounded
-        # chunk sizes will only be used for the bounded execution
-        self.bounded_exec_chunk_prefill_ratio = max(int(chunk_prefill_ratio), 1)
-        self.bounded_exec_chunk_size = int(chunk_size)
+        self.chunk_prefill_ratio = max(int(chunk_prefill_ratio), 1) if chunk_prefill_ratio is not None else 2
+        self.chunk_size = max(int(chunk_size), 1) if chunk_size is not None else 1
 
         self.exception_behavior = exception_behavior
         self.argument_type = argument_type

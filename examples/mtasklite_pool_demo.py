@@ -93,8 +93,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--n_elem', type=int, default=2000,
                         help='Number of elements in the array')
-    parser.add_argument('--chunk_size', type=int, default=100)
-    parser.add_argument('--chunk_prefill_ratio', type=int, default=2)
+    parser.add_argument('--chunk_size', type=int, default=None)
+    parser.add_argument('--chunk_prefill_ratio', type=int, default=None)
     parser.add_argument('--n_jobs', type=int, default=mp.cpu_count())
     parser.add_argument('--is_unordered', action='store_true')
     parser.add_argument('--use_threads',  action='store_true')
