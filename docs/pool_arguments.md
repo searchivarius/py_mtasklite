@@ -11,5 +11,5 @@ Here is a full list of `mtasklite.Pool` arguments that can be passed through `pq
 * `chunk_size` Size of chunks in the processing queue (kwarg-only).
 * `chunk_prefill_ratio` Prefill ratio for chunks in the processing queue (kwarg-only).
 * `is_unordered` Whether results can be returned in any order (kwarg-only).
-* `task_timeout` Timeout for individual tasks (kwarg-only).
+* `task_timeout` **deprecated/discouraged** Timeout for individual tasks (kwarg-only). Unfortunately, we realized that it is likely impossible to implement timeouts in both safe and cross-platform fashion. Perhaps, we will add a limited support in the future.
 * `join_timeout` Timeout for joining workers (kwarg-only).

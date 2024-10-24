@@ -1,8 +1,10 @@
 [![PyPI version](https://img.shields.io/pypi/v/mtasklite.svg)](https://pypi.python.org/pypi/mtasklite/)
+[![Downloads](https://static.pepy.tech/badge/mtasklite)](https://pepy.tech/project/mtasklite)
+[![Downloads](https://static.pepy.tech/badge/mtasklite/month)](https://pepy.tech/project/mtasklite)
 
 # MultiTASKLite: A lightweight library for Python multitasking
 
-This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features--advantages-over-pqdm)), timeouts, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration (see a [detailed list of features](#features--advantages-over-pqdm)), and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
 This enables:
   1. Using different GPUs, models, or network connections in different workers.
@@ -96,7 +98,7 @@ A more detailed overview of features:
 * The library supports any input iterable and passing worker arguments as individual elements (for single-argument functions), keyword-argument dictionaries, or tuples (for multiple positional arguments).
 * Like `pqdm`, additional `tqdm` parameters can be passed as keyword-arguments. With this, you can, e.g., disable `tqdm`, change the description, or use a different `tqdm` class.
 * In that, the code supports automatic parsing of `pqdm` kwargs and separating between the process pool class `mtasklite.Pool` args and `tqdm` args. For a full-list of "passable" arguments, please [see this page](docs/pool_arguments.md).
-* Support for unordered execution and task timeouts.
+* Support for **both unordered** and ordered execution.
 * The input queue is bounded by default. Setting `bounded` to False enables an unbounded input queue, which can result in faster processing at the expense of using more memory. **Caution**: If you read from a huge input file, setting `bounded` to False will cause loading the whole file into memory and potentially crashing your process.
 
 

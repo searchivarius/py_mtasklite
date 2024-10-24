@@ -1,6 +1,7 @@
 import concurrent.futures
 import multiprocess as mp
 import inspect
+import logging
 
 from heapq import heappush, heappop
 
@@ -243,9 +244,13 @@ class Pool:
         :param chunk_prefill_ratio: Prefill ratio for chunks
         :param is_unordered: Whether results can be returned in any order
         :param use_threads: Use threads instead of processes
-        :param task_timeout: Timeout for individual tasks
+        :param task_timeout: Timeout for individual tasks (currently discouraged)
         :param join_timeout: Timeout for joining workers
         """
+
+        if task_timeout is not None:
+            logging.warning("The task timeout features is deprecated."
+                            " We currently cannot support task timeouts in the safe and cross-platform fashion")
 
         if type(worker_or_worker_arr) == list:
             assert n_jobs is None or n_jobs == len(worker_or_worker_arr), \
