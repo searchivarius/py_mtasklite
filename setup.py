@@ -10,7 +10,7 @@ from version import __version__
 print('Building version:', __version__)
 
 curr_dir = path.abspath(path.dirname(__file__))
-with open(path.join(curr_dir, 'README.md'), encoding='utf-8') as f:
+with open(path.join(curr_dir, 'README_SHORT.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(

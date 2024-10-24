@@ -49,6 +49,16 @@ class WorkerWrapper:
 
                 out_queue.put((obj_id, ret_val))
 
+            #
+            # This resource clean-up is key. Quite interesting, we pass test_queue_cleanup_after_exception_worker
+            # which checks termination due to an exception (with 'immediate') in the unbounded model
+            # Yet on some real tasks, the function __call_ terminates properly, but the process does not finish
+            # due to queue threads being active.
+            #
+            in_queue.cancel_join_thread()
+            out_queue.cancel_join_thread()
+
+
 
 class SortedOutputHelper:
     """
