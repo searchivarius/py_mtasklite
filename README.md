@@ -66,7 +66,7 @@ class Square:
     def __init__(self, proc_id):
         # It is important to import multiprocessing here (when using from the notebook)
         import multiprocessing as mp
-        print(f'Initialized process ' + str(mp.current_process()) + ' with argument = {proc_id}\n')
+        print(f'Initialized process {mp.current_process()} with argument = {proc_id}\n')
     def __call__(self, a):
         return a*a
 
