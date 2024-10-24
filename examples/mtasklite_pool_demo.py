@@ -77,11 +77,12 @@ def main(args):
               is_unordered=args.is_unordered,
               bounded=not args.is_unbounded,
               exception_behavior=args.exception_behavior,
+              task_timeout=args.task_timeout,
               join_timeout=1) as proc_pool:
         # just marking the type
         for result in tqdm(proc_pool(input_iterable)):
             if is_exception(result):
-                print('Error:', result)
+                print('Error:', type(result), str(result), '\n')
             else:
                 tot_res += result
 
@@ -99,6 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--is_unordered', action='store_true')
     parser.add_argument('--use_threads',  action='store_true')
     parser.add_argument('--is_unbounded', action='store_true')
+    parser.add_argument('--task_timeout', type=float, default=None)
 
     parser.add_argument('--fire_exception_proc_id', type=int, default=None,
                         help='Fire a "rogue" exception from the process with this ID')

@@ -49,6 +49,28 @@ class WorkerWrapper:
                 out_queue.put((obj_id, ret_val))
 
 
+class SortedOutputHelper:
+    """
+        The processed results may come in (somewhat) unordered, but we need to output them using the original order.
+        This class maintains a priority queue to achieve this. An important assumption: all objects will be
+        enumerated from 0 to <number of objects - 1> without gaps and repetitions.
+    """
+    def __init__(self):
+        self.last_obj_out = -1
+        self.out_queue = []
+
+    def add_obj(self, obj_id, obj_ref):
+        heappush(self.out_queue, (obj_id, obj_ref))
+
+    def yield_results(self):
+        while self.out_queue and self.out_queue[0][0] == self.last_obj_out + 1:
+            self.last_obj_out, result = heappop(self.out_queue)
+            yield result
+
+    def empty(self):
+        return not self.out_queue
+
+
 class WorkerPoolResultGenerator:
     def __init__(self, parent_obj, input_iterable,
                  bounded,
@@ -102,8 +124,7 @@ class WorkerPoolResultGenerator:
 
         exceptions_arr = []
 
-        out_queue = []
-        last_out_obj = -1
+        sorted_out_helper = SortedOutputHelper()
 
         while not finished_input or received_qty < submitted_qty:
             try:
@@ -125,7 +146,10 @@ class WorkerPoolResultGenerator:
                 obj_id, result = self.parent_obj.out_queue.get()
                 if is_exception(result):
                     if self.parent_obj.exception_behavior == ExceptionBehaviour.IMMEDIATE:
+                        # Cleaning the input queue (else in unbounded mode we have to wait for all other tasks to finish)
+                        self.clean_input_queue()
                         self.parent_obj._close()
+
                         raise result
                     elif self.parent_obj.exception_behavior == ExceptionBehaviour.DEFERRED:
                         exceptions_arr.append(result)
@@ -136,29 +160,37 @@ class WorkerPoolResultGenerator:
                 if self.is_unordered:
                     yield result
                 else:
-                    heappush(out_queue, (obj_id, result))
-                    if out_queue[0][0] == last_out_obj + 1:
-                        last_out_obj, result = heappop(out_queue)
+                    sorted_out_helper.add_obj(obj_id, result)
+                    for result in sorted_out_helper.yield_results():
                         yield result
 
                 assert received_qty < submitted_qty
                 assert self._length is None or received_qty < self._length
+                # We update this counter after receiving an element from the queue rather than after
+                # returning/yielding it. If the priority queue is not empty after all elements are processed
+                # and received, we will still empty it afer exiting the outer loop.
                 received_qty += 1
 
-            while out_queue and out_queue[0][0] == last_out_obj + 1:
-                last_out_obj, result = heappop(out_queue)
+            for result in sorted_out_helper.yield_results():
                 yield result
 
-        while out_queue and out_queue[0][0] == last_out_obj + 1:
-            last_out_obj, result = heappop(out_queue)
+        for result in sorted_out_helper.yield_results():
             yield result
 
-        assert not out_queue, \
+        assert sorted_out_helper.empty(), \
             f'Logic error, the output queue should be empty at this point, but it has {len(out_queue)} elements'
 
         self.parent_obj._close()
         if exceptions_arr:
             raise Exception(*exceptions_arr)
+
+    def clean_input_queue(self):
+        try:
+            while not self.parent_obj.in_queue.empty():
+                # Some small non-zero timeout is fine
+                self.parent_obj.in_queue.get(1e-6)
+        except:
+            pass
 
 
 class Pool:

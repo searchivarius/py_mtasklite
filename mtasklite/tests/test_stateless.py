@@ -110,7 +110,7 @@ def test_stateless_1(max_elem):
             try:
                 run_generic_stateless_test(**kwargs)
             except Exception as e:
-                print('Unexpected exception:', e)
+                print('Unexpected exception:', type(e), e)
                 print('Test function arguments:')
                 print(kwargs)
                 return False
