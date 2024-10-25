@@ -4,9 +4,9 @@
 
 # MultiTASKLite: A lightweight library for Python multitasking
 
-This `mtasklite` library is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
+The `mtasklite` library provides enjoyable parallelization of iterating through an iterable with or without a progress bar. It is inspired by the simplicity of the great [`pqdm` library](https://github.com/niedakh/pqdm), but it improves upon `pqdm` in several ways, in particular, by supporting object-based (stateful) workers, truly "lazy" iteration, and context managers (i.e., a support for `with-statement`). Stateful workers are implemented using the cool concept of delayed initialization, which is effortlessly enabled by adding `@delayed_init` decorator to a worker class definition.
 
-This enables:
+Supporting object-based workers enables:
   1. Using different GPUs, models, or network connections in different workers.
   2. Efficient initialization of workers: If the worker needs to load a model (which often takes quite a bit of time), it will be done once (per process/thread)  **before** processing input items.(examples/mtasklite_pqdm_spacy_tokenization_demo.ipynb) for an example.
   3. Logging and bookkeeping: Each worker is represented by an object that "lives" as long as we have items to process (data can be stored in the object attributes). 
