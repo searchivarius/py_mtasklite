@@ -104,5 +104,5 @@ A more detailed overview of features:
 
 # Credits
 
-A **huge** shoutout to the creators for the [multiprocess library](https://github.com/uqfoundation/multiprocess), which is a drop-in replacement of the standard Python `multiprocessing` library, which resolves various pickling issues that arise on non-Unix platforms (when a standard multiprocessing library is used). Thanks to their effort, `mtasklite` works across Linux, Windows, and MacOS.
+A **huge** shoutout to the creators of the [multiprocess library](https://github.com/uqfoundation/multiprocess), which is a drop-in replacement of the standard Python `multiprocessing` library, which resolves various pickling issues that arise on non-Unix platforms (when a standard multiprocessing library is used). Thanks to their effort, `mtasklite` works across Linux, Windows, and MacOS.
 
