@@ -279,7 +279,7 @@ class Pool:
 
         self.bounded = bounded
         self.chunk_prefill_ratio = max(int(chunk_prefill_ratio), 1) if chunk_prefill_ratio is not None else 2
-        self.chunk_size = max(int(chunk_size), 1) if chunk_size is not None else 1
+        self.chunk_size = max(int(chunk_size), 1) if chunk_size is not None else self.num_workers
 
         self.exception_behavior = exception_behavior
         self.argument_type = argument_type
