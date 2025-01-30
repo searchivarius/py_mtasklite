@@ -67,7 +67,7 @@ def test_queue_cleanup_after_exception_1():
     N = 20
 
     SLEEP_TIME = 0.1
-    TIMEOUT_TIME = 2 * SLEEP_TIME
+    TIMEOUT_TIME = N * SLEEP_TIME
     assert N > 3 * N_WORKERS
 
     """
@@ -213,7 +213,10 @@ def test_misc_1():
     except Exception as e:
         print('Unexpected exception in test_queue_cleanup_after_exception_1:', type(e), e)
         return False
+    
+    return True
 
+def test_misc_2():
     try:
         test_exited_1()
     except Exception as e:

@@ -1,7 +1,7 @@
-import concurrent.futures
 import multiprocess as mp
 import inspect
 import logging
+import queue
 
 from heapq import heappush, heappop
 
@@ -10,9 +10,10 @@ from .delayed_init import ShellObject
 
 from .utils import is_sized_iterator, is_exception
 
+TINY_QUEUE_TIMEOUT=1e-6
 
 def is_valid_worker(worker):
-    return inspect.isfunction(worker) or type(worker) == ShellObject,
+    return inspect.isfunction(worker) or type(worker) == ShellObject
 
 
 class WorkerWrapper:
@@ -20,43 +21,45 @@ class WorkerWrapper:
         self.worker = worker
         self.timeout = timeout
 
-    def __call__(self, in_queue, out_queue, argument_type: ArgumentPassing):
+    def __call__(self, in_queue, out_queue, control_queue, argument_type: ArgumentPassing):
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            while True:
-                packed_arg = in_queue.get()
-                if packed_arg is None:
-                    break
+        while True:
+            packed_arg = in_queue.get()
+            if packed_arg is None:
+                break
+            try:
+                control_queue.get_nowait()
+                break
+            except queue.Empty:
+                pass
 
-                obj_id, worker_arg = packed_arg
+            obj_id, worker_arg = packed_arg
 
-                # If a worker is an object with a delayed initialization (inside a shell object),
-                # then it will be created the first time it is used here.
-                try:
-                    if argument_type == ArgumentPassing.AS_KWARGS:
-                        future = executor.submit(self.worker, **worker_arg)
-                        ret_val = future.result(timeout=self.timeout)
-                    elif argument_type == ArgumentPassing.AS_ARGS:
-                        future = executor.submit(self.worker, *worker_arg)
-                        ret_val = future.result(timeout=self.timeout)
-                    elif argument_type == ArgumentPassing.AS_SINGLE_ARG:
-                        future = executor.submit(self.worker, worker_arg)
-                        ret_val = future.result(timeout=self.timeout)
-                    else:
-                        raise Exception(f'Invalid argument passing type: {argument_type}')
-                except Exception as e:
-                    ret_val = e
+            # If a worker is an object with a delayed initialization (inside a shell object),
+            # then it will be created the first time it is used here.
+            try:
+                if argument_type == ArgumentPassing.AS_KWARGS:
+                    ret_val = self.worker(**worker_arg)
+                elif argument_type == ArgumentPassing.AS_ARGS:
+                    ret_val = self.worker(*worker_arg)
+                elif argument_type == ArgumentPassing.AS_SINGLE_ARG:
+                    ret_val = self.worker(worker_arg)
+                else:
+                    raise Exception(f'Invalid argument passing type: {argument_type}')
+            except Exception as e:
+                ret_val = e
 
-                out_queue.put((obj_id, ret_val))
+            out_queue.put((obj_id, ret_val))
 
-            #
-            # This resource clean-up is key. Quite interesting, we pass test_queue_cleanup_after_exception_worker
-            # which checks termination due to an exception (with 'immediate') in the unbounded model
-            # Yet on some real tasks, the function __call_ terminates properly, but the process does not finish
-            # due to queue threads being active.
-            #
-            in_queue.cancel_join_thread()
-            out_queue.cancel_join_thread()
+        #
+        # This resource clean-up is key. Quite interesting, we pass test_queue_cleanup_after_exception_worker
+        # which checks termination due to an exception (with 'immediate') in the unbounded model
+        # Yet on some real tasks, the function __call_ terminates properly, but the process does not finish
+        # due to queue threads being active.
+        #
+        in_queue.cancel_join_thread()
+        out_queue.cancel_join_thread()
+        control_queue.cancel_join_thread()
 
 
 
@@ -103,7 +106,13 @@ class WorkerPoolResultGenerator:
             self._length = len(input_iterable)  # Store the length of the iterable
         else:
             self._length = None
-        self._iterator = self._generator()  # Create the generator
+
+        # Create the generator. To help with debugging, n_jobs == 1 will use a special
+        # generator that does not use any threads or processes.
+        if self.parent_obj.single_worker is not None:
+            self._iterator = self._generator_single_worker_no_threads()
+        else:
+            self._iterator = self._generator()  
 
     def __len__(self):
         return self._length
@@ -119,6 +128,36 @@ class WorkerPoolResultGenerator:
 
     def __next__(self):
         return next(self._iterator)
+    
+    def _generator_single_worker_no_threads(self):
+        exceptions_arr = []
+        argument_type = self.parent_obj.argument_type
+
+        for worker_arg in self.input_iter:
+            try:
+                if argument_type == ArgumentPassing.AS_KWARGS:
+                    result = self.parent_obj.single_worker.worker(**worker_arg)
+                elif argument_type == ArgumentPassing.AS_ARGS:
+                    result = self.parent_obj.single_worker.worker(*worker_arg)
+                elif argument_type == ArgumentPassing.AS_SINGLE_ARG:
+                    result = self.parent_obj.single_worker.worker(worker_arg)
+                else:
+                    raise Exception(f'Invalid argument passing type: {argument_type}')
+            except Exception as e:
+                result = e
+            if is_exception(result):
+                if self.parent_obj.exception_behavior == ExceptionBehaviour.IMMEDIATE:
+                    raise result
+                elif self.parent_obj.exception_behavior == ExceptionBehaviour.DEFERRED:
+                    exceptions_arr.append(result)
+                else:
+                    # If exception is ignored it will be returned to the end user
+                    assert self.parent_obj.exception_behavior == ExceptionBehaviour.IGNORE
+            
+            yield result
+
+        if exceptions_arr:
+            raise Exception(*exceptions_arr)
 
     def _generator(self):
         submitted_qty = 0
@@ -157,8 +196,6 @@ class WorkerPoolResultGenerator:
                 obj_id, result = self.parent_obj.out_queue.get()
                 if is_exception(result):
                     if self.parent_obj.exception_behavior == ExceptionBehaviour.IMMEDIATE:
-                        # Cleaning the input queue (else in unbounded mode we have to wait for all other tasks to finish)
-                        self.clean_input_queue()
                         self.parent_obj._close()
 
                         raise result
@@ -194,14 +231,6 @@ class WorkerPoolResultGenerator:
         self.parent_obj._close()
         if exceptions_arr:
             raise Exception(*exceptions_arr)
-
-    def clean_input_queue(self):
-        try:
-            while not self.parent_obj.in_queue.empty():
-                # Some small non-zero timeout is fine
-                self.parent_obj.in_queue.get(1e-6)
-        except:
-            pass
 
 
 class Pool:
@@ -287,6 +316,7 @@ class Pool:
 
         self.in_queue = mp.Queue()
         self.out_queue = mp.Queue()
+        self.control_queue = mp.Queue()
 
         self.term_signal_sent = False
         self.exited = False
@@ -306,15 +336,23 @@ class Pool:
 
         self.workers = []
 
-        # Start worker processes
-        for proc_id in range(self.num_workers):
-            one_worker = worker_or_worker_arr[proc_id] \
+        self.single_worker = None
+
+        # Start worker processes if we have more than one job
+        if self.num_workers > 1:
+            for proc_id in range(self.num_workers):
+                one_worker = worker_or_worker_arr[proc_id] \
+                    if type(worker_or_worker_arr) == list else worker_or_worker_arr
+                one_proc = process_class(target=WorkerWrapper(one_worker, self.task_timeout),
+                                        args=(self.in_queue, self.out_queue, self.control_queue, self.argument_type),
+                                        daemon=daemon)
+                self.workers.append(one_proc)
+                one_proc.start()
+        else:
+            one_worker = worker_or_worker_arr[0] \
                 if type(worker_or_worker_arr) == list else worker_or_worker_arr
-            one_proc = process_class(target=WorkerWrapper(one_worker, self.task_timeout),
-                                     args=(self.in_queue, self.out_queue, self.argument_type),
-                                     daemon=daemon)
-            self.workers.append(one_proc)
-            one_proc.start()
+
+            self.single_worker = WorkerWrapper(one_worker, self.task_timeout)
 
     def __exit__(self, type, value, tb):
         # Close will not do anything if the close function was called already
@@ -334,6 +372,11 @@ class Pool:
     def _close(self):
         if not self.term_signal_sent:
             for _ in range(self.num_workers):
-                self.in_queue.put(None)  # end-of-work signal: one per worker
+                # Primariy end-of-work signal: one per worker
+                # It may take some time before a worker sees this
+                self.in_queue.put(None)  
+                # An additional end-of-work signal: one per worker
+                # These ones will be seen very soon, before processing the next item in a queue
+                self.control_queue.put(None)
             self._join_workers()
         self.term_signal_sent = True

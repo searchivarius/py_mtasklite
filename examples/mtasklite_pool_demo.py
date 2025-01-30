@@ -3,6 +3,7 @@ import argparse
 import multiprocess as mp
 
 from tqdm.auto import tqdm
+from time import sleep
 
 from mtasklite import Pool, delayed_init, is_exception, ExceptionBehaviour, ArgumentPassing
 
@@ -24,14 +25,17 @@ def sample_expensive_calc_func(input_arg):
 
 @delayed_init
 class SampleExpensiveCalcClassWorker:
-    def __init__(self, proc_id, fire_exception_proc_id=None):
+    def __init__(self, proc_id, fire_exception_proc_id=None, add_sleep_time=None):
         print(f'Initialized process {mp.current_process()} passed ID = {proc_id} with fire_exception_proc_id: {fire_exception_proc_id}\n')
         self.proc_id = proc_id
         self.fire_exception_proc_id = fire_exception_proc_id
+        self.add_sleep_time = add_sleep_time
 
     def __call__(self, input_arg):
         if self.proc_id == self.fire_exception_proc_id:
             raise Exception("Rogue exception!")
+        if self.add_sleep_time is not None:
+            sleep(self.add_sleep_time)
         return sample_expensive_calc_func(input_arg)
 
 
@@ -67,7 +71,9 @@ def main(args):
         function_or_worker_arr = sample_expensive_calc_func
     else:
         function_or_worker_arr = \
-            [SampleExpensiveCalcClassWorker(proc_id, fire_exception_proc_id=args.fire_exception_proc_id)
+            [SampleExpensiveCalcClassWorker(proc_id, 
+                                            fire_exception_proc_id=args.fire_exception_proc_id,
+                                            add_sleep_time=args.add_sleep_time)
              for proc_id in range(n_jobs)]
 
     with Pool(function_or_worker_arr, n_jobs,
@@ -103,7 +109,9 @@ if __name__ == '__main__':
     parser.add_argument('--task_timeout', type=float, default=None)
 
     parser.add_argument('--fire_exception_proc_id', type=int, default=None,
-                        help='Fire a "rogue" exception from the process with this ID')
+                        help='Fire a "rogue" exception from the process with this ID (only for stateful tests)')
+    parser.add_argument('--add_sleep_time', type=float, default=None,
+                        help='Additional sleep to make execution longer (only for stateful tests)')
     parser.add_argument('--use_stateless_function_worker',
                         action='store_true', help='Use a regular (stateless) function-based worker instead of a class')
     parser.add_argument('--use_unsized_iterable', action='store_true')
