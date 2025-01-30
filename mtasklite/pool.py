@@ -378,5 +378,10 @@ class Pool:
                 # An additional end-of-work signal: one per worker
                 # These ones will be seen very soon, before processing the next item in a queue
                 self.control_queue.put(None)
+
+            self.in_queue.cancel_join_thread()
+            self.out_queue.cancel_join_thread()
+            self.control_queue.cancel_join_thread()
+
             self._join_workers()
         self.term_signal_sent = True
