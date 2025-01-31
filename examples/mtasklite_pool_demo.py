@@ -33,6 +33,7 @@ class SampleExpensiveCalcClassWorker:
 
     def __call__(self, input_arg):
         if self.proc_id == self.fire_exception_proc_id:
+            self.fire_exception_proc_id = None
             raise Exception("Rogue exception!")
         if self.add_sleep_time is not None:
             sleep(self.add_sleep_time)
