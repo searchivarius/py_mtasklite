@@ -15,6 +15,3 @@ Here is the complete list of major interface/implementation differences:
 5. The `direct` argument passing mode name in `pqdm` is confusing. Thus, we renamed it to `single_arg`. However, this is a default argument passing value (in both `pqdm` and `mtasklite`). Thus, unless `direct` is specified explicitly in the code that uses `pqdm` (which is unlikely), no additional changes will be required due to this renaming.
 
 6. Regarding the bounded execution flag, we set it to `False` by default, which enables "lazy" iteration with a bounded input/output queue.
-
-8. We always start a thread/process for a worker even if `n_jobs` is set to one. In contrast, if `n_jobs = 1`, `pqdm` runs a job in the same process/thread.
-
