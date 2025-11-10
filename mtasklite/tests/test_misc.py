@@ -1,6 +1,6 @@
 import concurrent.futures
 from time import sleep
-
+from functools import partial
 
 import mtasklite.threads
 from mtasklite.constants import ArgumentPassing, ExceptionBehaviour
@@ -9,6 +9,7 @@ from mtasklite.utils import current_function_name, is_exception
 from mtasklite import Pool
 from mtasklite import delayed_init
 from tqdm import tqdm
+
 
 @delayed_init
 class AlwaysThrows:
@@ -22,6 +23,7 @@ def ret_args(a, b, c):
 
 def ret_single_arg(a):
     return a
+
 
 class DummyException(Exception):
     pass
@@ -106,7 +108,7 @@ def test_exceptions(exception_behavior: ExceptionBehaviour):
     for use_threads in tqdm([False, True],
                         desc=f'Testing {current_function_name()} with {exception_behavior}'):
         with Pool([AlwaysThrows()] * N_JOBS,
-                  argument_type='args', # also testing conversion from string to an ArgumentPassing type
+                  argument_type=ArgumentPassing.AS_SINGLE_ARG,
                   use_threads=use_threads,
                   exception_behavior=exception_behavior) as pbar:
             try:
@@ -118,19 +120,24 @@ def test_exceptions(exception_behavior: ExceptionBehaviour):
 
             except Exception as e:
                 thrown_e = e
-            if ExceptionBehaviour == ExceptionBehaviour.IMMEDIATE:
-                assert thrown_e is not None
-                assert type(thrown_e) == Exception
-                assert is_exception(thrown_e.args[0])
-            if ExceptionBehaviour == ExceptionBehaviour.DEFERRED:
-                assert thrown_e is not None
-                assert type(thrown_e) == Exception
-                except_arg1 = thrown_e.args[0]
-                assert type(except_arg1) == list
 
-                assert len(except_arg1) == N
-                for e in except_arg1:
-                    assert is_exception(e)
+            if exception_behavior == ExceptionBehaviour.IMMEDIATE:
+                assert thrown_e is not None, 'Immediate exceptions: Thrown exception variable is None'
+                assert is_exception(thrown_e), 'Immediate exceptions: exception type is not Exception'
+                except_arg = thrown_e.args
+                assert type(except_arg) in (list, tuple), f'{exception_behavior}: argument type is not a list/tuple, but: {type(except_arg)}'
+                assert len(except_arg) == 1, f'Immediate exceptions: exception list length is {len(except_arg)} instead of 1!'
+                assert type(except_arg[0]) in [str, Exception], f'{exception_behavior}: exceptoin has an unxpected type: {type(except_arg[0])}'
+
+            if exception_behavior == ExceptionBehaviour.DEFERRED:
+                assert thrown_e is not None, 'Deferred exceptions: Thrown exception variable is None'
+                assert is_exception(thrown_e), 'Deferred exceptions: exception type is not Exception'
+                except_arg = thrown_e.args
+                assert len(except_arg) == N, f'Deferred exceptions: exception list length is {len(except_arg)} instead of {N}!'
+
+                assert type(except_arg) in (list, tuple), f'{exception_behavior}: argument type is not a list/tuple, but: {type(except_arg)}'
+                for e in except_arg:
+                    assert is_exception(e), f'{exception_behavior}: individual element has an unxpected type: {type(e)}'
 
 
 def test_single_arg():
@@ -216,6 +223,21 @@ def test_misc_1():
     
     return True
 
+
+def test_partial_function_support():
+    input_arr = [1, 2, 3, 4]
+
+    def multiply(a, b):
+        return a * b
+
+    doubled = partial(multiply, 2)
+
+    for use_threads in [False, True]:
+        with Pool(doubled, n_jobs=4, use_threads=use_threads) as pbar:
+            result = list(pbar(input_arr))
+        assert result == [2 * x for x in input_arr], \
+            f'Partial function failed for use_threads={use_threads}: {result}'
+
 def test_misc_2():
     try:
         test_exited_1()
@@ -250,4 +272,11 @@ def test_misc_2():
         print('Unexpected exception in test_args:', type(e), e)
         return False
 
+    try:
+        test_partial_function_support()
+    except Exception as e:
+        print('Unexpected exception in test_partial_function_support:', type(e), e)
+        return False
+
     return True
+

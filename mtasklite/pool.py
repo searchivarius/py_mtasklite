@@ -2,6 +2,7 @@ import multiprocess as mp
 import inspect
 import logging
 import queue
+import functools
 
 from heapq import heappush, heappop
 
@@ -12,8 +13,18 @@ from .utils import is_sized_iterator, is_exception
 
 TINY_QUEUE_TIMEOUT=1e-6
 
+
 def is_valid_worker(worker):
-    return inspect.isfunction(worker) or type(worker) == ShellObject
+    # Allow pure functions and functools.partial objects
+    if inspect.isfunction(worker) or isinstance(worker, functools.partial):
+        return True
+
+    # Allow delayed-initialization wrapper objects
+    if isinstance(worker, ShellObject):
+        return True
+
+    # Everything else (classes, instances, etc.) is disallowed
+    return False
 
 
 class WorkerWrapper:
@@ -62,7 +73,6 @@ class WorkerWrapper:
         control_queue.cancel_join_thread()
 
 
-
 class SortedOutputHelper:
     """
         The processed results may come in (somewhat) unordered, but we need to output them using the original order.
@@ -83,6 +93,9 @@ class SortedOutputHelper:
 
     def empty(self):
         return not self.out_queue
+
+    def __len__(self):
+        return len(self.out_queue)
 
 
 class WorkerPoolResultGenerator:
@@ -226,7 +239,8 @@ class WorkerPoolResultGenerator:
             yield result
 
         assert sorted_out_helper.empty(), \
-            f'Logic error, the output queue should be empty at this point, but it has {len(out_queue)} elements'
+            f'Logic error, the output queue should be empty at this point, but it has {len(sorted_out_helper)} elements'
+
 
         self.parent_obj._close()
         if exceptions_arr:
@@ -303,7 +317,7 @@ class Pool:
             assert n_jobs is not None, 'Specify the number of jobs or an array of worker objects!'
             assert is_valid_worker(worker_or_worker_arr), \
                 f'A worker must be a function or an instance of a class with a delayed initialization,' + \
-                ' not {type(function_or_worker_arr)}!'
+                f' not {type(worker_or_worker_arr)}!'
             self.num_workers = max(int(n_jobs), 1)
 
         self.bounded = bounded
@@ -326,7 +340,7 @@ class Pool:
         if self.use_threads:
             import threading
             process_class = threading.Thread
-            daemon = None
+            daemon = True # looks like daemon = True is useful for threads as well
         else:
             process_class = mp.Process
             daemon = True
@@ -372,12 +386,17 @@ class Pool:
     def _close(self):
         if not self.term_signal_sent:
             for _ in range(self.num_workers):
-                # Primariy end-of-work signal: one per worker
-                # It may take some time before a worker sees this
-                self.in_queue.put(None)  
-                # An additional end-of-work signal: one per worker
-                # These ones will be seen very soon, before processing the next item in a queue
-                self.control_queue.put(None)
+                # Primary end-of-work signal: one per worker. It may take some time before a worker sees this
+
+                # Workers calling cancel_join_thread() prevents hang, but if _close() is invoked mid-task,
+                # items still in the in_queue can raise BrokenPipeError in rare conditions.
+                try:
+                    self.in_queue.put(None)
+                    # An additional end-of-work signal: one per worker
+                    # These ones will be seen very soon, before processing the next item in a queue
+                    self.control_queue.put(None)
+                except (OSError, ValueError):
+                    pass
 
             self._join_workers()
         self.term_signal_sent = True

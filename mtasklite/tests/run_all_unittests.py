@@ -13,7 +13,7 @@ def main(args):
     n_qty = 0
 
     n_fail += not test_misc_1() ; n_qty += 1
-    n_fail += not test_misc_2() ; n_qty += 2
+    n_fail += not test_misc_2() ; n_qty += 1
     n_fail += not test_stateful_1(args.n_elem) ; n_qty += 1
     n_fail += not test_stateless_1(args.n_elem) ; n_qty += 1
 

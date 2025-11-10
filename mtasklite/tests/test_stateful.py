@@ -107,7 +107,7 @@ def test_stateful_1(max_elem):
                 print(kwargs)
                 return False
 
-        return True
+    return True
 
 
 
