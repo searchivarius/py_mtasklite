@@ -392,6 +392,9 @@ class Pool:
                 # items still in the in_queue can raise BrokenPipeError in rare conditions.
                 try:
                     self.in_queue.put(None)
+                except (OSError, ValueError):
+                    pass
+                try:
                     # An additional end-of-work signal: one per worker
                     # These ones will be seen very soon, before processing the next item in a queue
                     self.control_queue.put(None)
