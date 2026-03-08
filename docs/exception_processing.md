@@ -10,7 +10,7 @@ if is_exception(ret_val):
    do_something()
 ```
 
-It is possible to change the behavior through the argument `exception_behavior`. Two additional options are supported:
+It is possible to change the behavior through the argument `exception_behaviour` (**make sure you use this exact spelling, not American spelling of the word `behavior`!). Two additional options are supported:
 
  `ExceptionBehaviour.IMMEDIATE`: Once a worker raises an exception, we stop reading from the input iterable and wait for workers that have already read from the input iterable. Then we raise the exception in the main process/thread.
 
